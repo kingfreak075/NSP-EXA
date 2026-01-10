@@ -20,26 +20,36 @@
     <div id="page1" class="page active max-w-md mx-auto p-6">
         <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-blue-600">
             <h1 class="text-2xl font-black text-slate-800 mb-2">ESA ELECOMP</h1>
-            <p class="text-sm text-slate-500 mb-6">Setup iniziale mese</p>
+            <p id="statoUtente" class="text-sm text-slate-500 mb-6">Inserisci i tuoi dati</p>
+            
             <div class="space-y-4">
                 <input id="nome" type="text" placeholder="Nome e Cognome" class="w-full p-4 border rounded-2xl shadow-sm">
                 <input id="targa" type="text" placeholder="Targa Auto" class="w-full p-4 border rounded-2xl shadow-sm">
-                <div class="grid grid-cols-2 gap-4">
-                    <select id="mese" class="p-4 border rounded-2xl bg-white shadow-sm">
-                        <option value="0">Gennaio</option><option value="1">Febbraio</option><option value="2">Marzo</option>
-                        <option value="3">Aprile</option><option value="4">Maggio</option><option value="5">Giugno</option>
-                        <option value="6">Luglio</option><option value="7">Agosto</option><option value="8">Settembre</option>
-                        <option value="9">Ottobre</option><option value="10">Novembre</option><option value="11">Dicembre</option>
-                    </select>
-                    <input id="anno" type="number" value="2025" class="p-4 border rounded-2xl shadow-sm">
+                
+                <div class="bg-slate-50 p-4 rounded-2xl border">
+                    <label class="text-[10px] font-bold text-slate-400 block mb-2 uppercase">Periodo da gestire</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <select id="mese" class="p-4 border rounded-2xl bg-white shadow-sm">
+                            <option value="0">Gennaio</option><option value="1">Febbraio</option><option value="2">Marzo</option>
+                            <option value="3">Aprile</option><option value="4">Maggio</option><option value="5">Giugno</option>
+                            <option value="6">Luglio</option><option value="7">Agosto</option><option value="8">Settembre</option>
+                            <option value="9">Ottobre</option><option value="10">Novembre</option><option value="11">Dicembre</option>
+                        </select>
+                        <input id="anno" type="number" value="2025" class="p-4 border rounded-2xl shadow-sm">
+                    </div>
                 </div>
-                <button onclick="configurazioneIniziale()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">CARICA FOGLIO</button>
-                <button onclick="resetTotale()" class="w-full text-red-400 text-xs py-2">Cancella tutta la memoria</button>
+
+                <button onclick="configurazioneIniziale()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">ACCEDI AL FOGLIO</button>
+                <button onclick="resetTotale()" class="w-full text-red-400 text-xs py-2">Elimina tutti i dati salvati</button>
             </div>
         </div>
     </div>
 
     <div id="page2" class="page max-w-md mx-auto p-4 pb-24">
+        <div class="flex justify-between items-center mb-4">
+            <h2 id="titoloPagina2" class="font-bold text-slate-700"></h2>
+            <button onclick="vaiAPagina(1)" class="text-blue-600 text-xs font-bold">Cambia Mese/Profilo</button>
+        </div>
         <div id="listaGiorni" class="space-y-2"></div>
         <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t flex gap-2">
             <button onclick="generaPDF()" class="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold">SCARICA PDF</button>
@@ -65,23 +75,13 @@
 
                 <div>
                     <label id="labelTipo" class="text-[10px] font-bold text-slate-400 uppercase">Tipo Assenza/Attività</label>
-                    <select id="editTipo" class="w-full p-3 border rounded-xl bg-white">
+                    <select id="editTipo" class="w-full p-3 border rounded-xl bg-white text-sm">
                         <option value="">Lavoro Ordinario</option>
                         <option value="72-ASSEMBLEA RETRIBUITA">72 - ASSEMBLEA RETRIBUITA</option>
-                        <option value="73-SCIOPERO">73 - SCIOPERO</option>
                         <option value="75-FERIE">75 - FERIE</option>
                         <option value="76-FESTIVITA">76 - FESTIVITA</option>
                         <option value="77-MALATTIA">77 - MALATTIA</option>
-                        <option value="78-INFORTUNIO">78 - INFORTUNIO</option>
-                        <option value="79-DONAZIONE SANGUE">79 - DONAZIONE SANGUE</option>
                         <option value="82-PERMESSO RETRIBUITO">82 - PERMESSO RETRIBUITO</option>
-                        <option value="84-PERMESSO NON RETRIBUITO">84 - PERMESSO NON RETRIBUITO</option>
-                        <option value="85-PERMESSO ELETTORALE">85 - PERMESSO ELETTORALE</option>
-                        <option value="86-PERMESSO LUTTO">86 - PERMESSO LUTTO</option>
-                        <option value="87-PERMESSO SINDACALE">87 - PERMESSO SINDACALE</option>
-                        <option value="88-PERMESSO STUDIO">88 - PERMESSO STUDIO</option>
-                        <option value="93-CONGEDO PATERNITA'">93 - CONGEDO PATERNITA'</option>
-                        <option value="94-CONGEDO PARENTALE">94 - CONGEDO PARENTALE</option>
                         <option value="95-SMART WORKING">95 - SMART WORKING</option>
                     </select>
                 </div>
@@ -111,19 +111,25 @@
         let datiMese = [];
         let giornoCorrenteIndex = null;
 
+        // Funzione per navigare tra le pagine
         function vaiAPagina(n) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById('page' + n).classList.add('active');
         }
 
-        function toggleAssenzaView() {
-            const isAssente = document.getElementById('assenzaTotale').checked;
-            document.getElementById('campiOrario').style.opacity = isAssente ? "0.3" : "1";
-            document.getElementById('campiOrario').style.pointerEvents = isAssente ? "none" : "auto";
-            if(isAssente) {
-                document.getElementById('editTipo').focus();
+        // Al caricamento, controlla se ci sono dati salvati
+        window.onload = function() {
+            const profilo = JSON.parse(localStorage.getItem('esa_profilo'));
+            if(profilo) {
+                document.getElementById('nome').value = profilo.nome;
+                document.getElementById('targa').value = profilo.targa;
+                document.getElementById('statoUtente').innerText = "Bentornato, seleziona il mese da gestire";
+                
+                // Imposta il mese e l'anno corrente come default
+                const oggi = new Date();
+                document.getElementById('mese').value = oggi.getMonth();
+                document.getElementById('anno').value = oggi.getFullYear();
             }
-            calcolaAnteprima();
         }
 
         function configurazioneIniziale() {
@@ -131,15 +137,23 @@
             const targa = document.getElementById('targa').value;
             const mese = document.getElementById('mese').value;
             const anno = document.getElementById('anno').value;
-            if(!nome || !targa) return alert("Mancano i dati!");
+            
+            if(!nome || !targa) return alert("Inserisci Nome e Targa!");
 
+            // Salva il profilo permanentemente
             localStorage.setItem('esa_profilo', JSON.stringify({nome, targa}));
+            
+            // Chiave unica per ogni mese/anno (es: esa_2025_0)
             const key = `esa_${anno}_${mese}`;
             const esistente = localStorage.getItem(key);
             
-            if(esistente) datiMese = JSON.parse(esistente);
-            else generaDefault(mese, anno);
+            if(esistente) {
+                datiMese = JSON.parse(esistente);
+            } else {
+                generaDefault(mese, anno);
+            }
 
+            document.getElementById('titoloPagina2').innerText = `${document.getElementById('mese').options[mese].text} ${anno}`;
             renderLista();
             vaiAPagina(2);
         }
@@ -152,7 +166,7 @@
                 let dw = data.getDay();
                 let r = { giorno: d, dw: data.toLocaleDateString('it-IT',{weekday:'short'}).toUpperCase(), e:'', p:'', pr:'', u:'', tipo:'', ord:0, str:0, ass:0 };
                 
-                if(dw !== 0 && dw !== 6) {
+                if(dw !== 0 && dw !== 6) { // Da Lunedì a Venerdì
                     if(isFestivo(d, mese)) { r.tipo = "76-FESTIVITA"; r.ass = 480; }
                     else { r.e = "08:00"; r.u = "17:00"; r.ord = 480; }
                 }
@@ -160,33 +174,12 @@
             }
         }
 
-        function calcolaAnteprima() {
+        function toggleAssenzaView() {
             const isAssente = document.getElementById('assenzaTotale').checked;
-            let res = "";
-            if(isAssente) {
-                res = "Giornata intera di assenza (8:00 ore)";
-            } else {
-                let e = parseMin(document.getElementById('editEntrata').value);
-                let u = parseMin(document.getElementById('editUscita').value);
-                let lavorato = Math.max(0, (u - e) - 60);
-                let ord = Math.min(lavorato, 480);
-                let str = Math.max(0, u - parseMin("17:00"));
-                let ass = Math.max(0, 480 - ord);
-                res = `Ordinarie: ${format(ord)} | Straordinarie: ${format(str)} | Assenza: ${format(ass)}`;
-            }
-            document.getElementById('anteprimaCalcolo').innerText = res;
-        }
-
-        function apriModifica(i) {
-            giornoCorrenteIndex = i;
-            const r = datiMese[i];
-            document.getElementById('giornoModifica').innerText = `Modifica ${r.dw} ${r.giorno}`;
-            document.getElementById('editEntrata').value = r.e || "08:00";
-            document.getElementById('editUscita').value = r.u || "17:00";
-            document.getElementById('editTipo').value = r.tipo;
-            document.getElementById('assenzaTotale').checked = (r.ass === 480 && !r.e);
-            toggleAssenzaView();
-            vaiAPagina(3);
+            const campi = document.getElementById('campiOrario');
+            campi.style.opacity = isAssente ? "0.3" : "1";
+            campi.style.pointerEvents = isAssente ? "none" : "auto";
+            calcolaAnteprima();
         }
 
         function salvaGiorno() {
@@ -195,20 +188,20 @@
             const tipo = document.getElementById('editTipo').value;
 
             if(isAssente) {
-                if(!tipo) return alert("Seleziona il tipo di assenza (es. Ferie)");
+                if(!tipo) return alert("Specifica il tipo di assenza!");
                 datiMese[i] = {...datiMese[i], e:'', u:'', p:'', pr:'', tipo: tipo, ord: 0, str: 0, ass: 480};
             } else {
                 let e = document.getElementById('editEntrata').value;
                 let u = document.getElementById('editUscita').value;
-                let eMin = parseMin(e), uMin = parseMin(u);
-                let lavorato = Math.max(0, (uMin - eMin) - 60);
-                let ord = Math.min(lavorato, 480);
+                let worked = Math.max(0, (parseMin(u) - parseMin(e)) - 60);
+                let ord = Math.min(worked, 480);
                 let ass = Math.max(0, 480 - ord);
-                if(ass > 0 && !tipo) return alert("Mancano ore! Seleziona un codice assenza (es. Permesso)");
+                if(ass > 0 && !tipo) return alert("Inserisci un codice per le ore di assenza!");
                 
-                datiMese[i] = {...datiMese[i], e, u, p:'12:00', pr:'13:00', tipo, ord, ass, str: Math.max(0, uMin - parseMin("17:00"))};
+                datiMese[i] = {...datiMese[i], e, u, p:'12:00', pr:'13:00', tipo, ord, ass, str: Math.max(0, parseMin(u) - parseMin("17:00"))};
             }
             
+            // Salva nel database del mese specifico
             const key = `esa_${document.getElementById('anno').value}_${document.getElementById('mese').value}`;
             localStorage.setItem(key, JSON.stringify(datiMese));
             renderLista();
@@ -223,7 +216,7 @@
                         <span class="font-bold">${r.dw} ${r.giorno}</span>
                         <div class="text-[10px] text-slate-500">${r.tipo || (r.e ? r.e+' - '+r.u : 'Riposo')}</div>
                     </div>
-                    <div class="text-[10px] text-right">
+                    <div class="text-[10px] text-right font-mono">
                         ${r.ord > 0 ? 'ORD: '+format(r.ord)+'<br>' : ''}
                         ${r.str > 0 ? '<span class="text-blue-600">STR: '+format(r.str)+'</span><br>' : ''}
                         ${r.ass > 0 ? '<span class="text-red-600">ASS: '+format(r.ass)+'</span>' : ''}
@@ -232,9 +225,34 @@
             `).join('');
         }
 
+        // Funzioni di Utility
         function parseMin(t) { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; }
         function format(m) { return m > 0 ? `${Math.floor(m/60)}:${(m%60).toString().padStart(2,'0')}` : '0:00'; }
         function isFestivo(d, m) { return ["1-0","6-0","25-3","1-4","2-5","15-7","4-9","1-10","8-11","25-11","26-11"].includes(`${d}-${m}`); }
+
+        function apriModifica(i) {
+            giornoCorrenteIndex = i;
+            const r = datiMese[i];
+            document.getElementById('giornoModifica').innerText = `${r.dw} ${r.giorno}`;
+            document.getElementById('editEntrata').value = r.e || "08:00";
+            document.getElementById('editUscita').value = r.u || "17:00";
+            document.getElementById('editTipo').value = r.tipo;
+            document.getElementById('assenzaTotale').checked = (r.ass === 480 && !r.e);
+            toggleAssenzaView();
+            vaiAPagina(3);
+        }
+
+        function calcolaAnteprima() {
+            const isAssente = document.getElementById('assenzaTotale').checked;
+            let res = isAssente ? "Assenza totale (8:00 ore)" : "";
+            if(!isAssente) {
+                let e = parseMin(document.getElementById('editEntrata').value);
+                let u = parseMin(document.getElementById('editUscita').value);
+                let lavorato = Math.max(0, (u - e) - 60);
+                res = `Ordinarie: ${format(Math.min(lavorato, 480))} | Assenza: ${format(Math.max(0, 480-lavorato))}`;
+            }
+            document.getElementById('anteprimaCalcolo').innerText = res;
+        }
 
         function generaPDF() {
             const p = JSON.parse(localStorage.getItem('esa_profilo'));
@@ -249,27 +267,26 @@
                 tO+=r.ord; tS+=r.str; tA+=r.ass;
                 tbody.innerHTML += `<tr><td>${r.dw} ${r.giorno}</td><td>${r.e}</td><td>${r.e?'12:00':''}</td><td>${r.e?'13:00':''}</td><td>${r.u}</td><td>${format(r.ord)}</td><td>${format(r.str)}</td><td>${format(r.ass)}</td><td>${r.tipo}</td></tr>`;
             });
+            document.getElementById('totOrd').innerText = format(tO); // ID corretto per il footer
             document.getElementById('tOrd').innerText = format(tO);
             document.getElementById('tStr').innerText = format(tS);
             document.getElementById('tAss').innerText = format(tA);
             const el = document.getElementById('pdf-template');
             el.style.display = 'block';
-            html2pdf().from(el).set({margin:10, filename:'Presenze_ESA.pdf'}).save().then(()=>el.style.display='none');
+            html2pdf().from(el).set({margin:10, filename:`Presenze_${p.nome}.pdf`}).save().then(()=>el.style.display='none');
         }
 
-        function resetTotale() { if(confirm("Cancellare tutto?")) { localStorage.clear(); location.reload(); } }
+        function resetTotale() { if(confirm("CANCELLARE TUTTO? (Profilo e tutti i mesi salvati)")) { localStorage.clear(); location.reload(); } }
 
-        // Init ore
+        // Caricamento ore nei select
         (function() {
-            let h = "";
+            let options = "";
             for(let i=0; i<96; i++) {
                 let t = `${Math.floor(i/4).toString().padStart(2,'0')}:${(i%4*15).toString().padStart(2,'0')}`;
-                h += `<option value="${t}">${t}</option>`;
+                options += `<option value="${t}">${t}</option>`;
             }
-            document.getElementById('editEntrata').innerHTML = h;
-            document.getElementById('editUscita').innerHTML = h;
-            const p = JSON.parse(localStorage.getItem('esa_profilo'));
-            if(p) { document.getElementById('nome').value = p.nome; document.getElementById('targa').value = p.targa; }
+            document.getElementById('editEntrata').innerHTML = options;
+            document.getElementById('editUscita').innerHTML = options;
         })();
     </script>
 </body>
