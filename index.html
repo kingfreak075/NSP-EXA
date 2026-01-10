@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -9,9 +10,18 @@
     <style>
         .page { display: none; }
         .page.active { display: block; }
-        #pdf-template { width: 210mm; padding: 15mm; background: white; display: none; color: black; font-family: Arial, sans-serif; }
+        /* Stile per il template PDF centrato */
+        #pdf-template { 
+            width: 190mm; /* Leggermente più stretto per i margini */
+            margin: 0 auto;
+            background: white; 
+            display: none; 
+            color: black; 
+            font-family: Arial, sans-serif; 
+        }
         .pdf-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .pdf-table th, .pdf-table td { border: 1px solid black; padding: 4px; text-align: center; font-size: 8pt; }
+        .pdf-table th, .pdf-table td { border: 1px solid black; padding: 6px; text-align: center; font-size: 8pt; height: 25px; }
+        .pdf-table th { background-color: #f3f4f6; }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
@@ -46,12 +56,12 @@
 
     <div id="page2" class="page max-w-md mx-auto p-4 pb-24">
         <div class="flex justify-between items-center mb-4 px-2">
-            <h2 id="titoloPagina2" class="font-bold text-slate-700"></h2>
-            <button onclick="vaiAPagina(1)" class="text-blue-600 text-xs font-bold bg-blue-50 px-3 py-1 rounded-full">Cambia Mese/Dati</button>
+            <h2 id="titoloPagina2" class="font-bold text-slate-700 text-lg"></h2>
+            <button onclick="vaiAPagina(1)" class="text-blue-600 text-xs font-bold bg-blue-50 px-3 py-1 rounded-full text-center">CAMBIA MESE</button>
         </div>
         <div id="listaGiorni" class="space-y-2"></div>
-        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t flex gap-2">
-            <button onclick="generaPDF()" class="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold">SCARICA PDF</button>
+        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t">
+            <button onclick="generaPDF()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-lg">SCARICA PDF</button>
         </div>
     </div>
 
@@ -73,7 +83,7 @@
                 </div>
 
                 <div>
-                    <label id="labelTipo" class="text-[10px] font-bold text-slate-400 uppercase">Codice Assenza (se necessaria)</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Codice Assenza (se necessaria)</label>
                     <select id="editTipo" class="w-full p-3 border rounded-xl bg-white text-sm">
                         <option value="">Lavoro Ordinario</option>
                         <option value="72-ASSEMBLEA RETRIBUITA">72 - ASSEMBLEA RETRIBUITA</option>
@@ -103,19 +113,19 @@
         </div>
     </div>
 
-    <div id="pdf-template" style="display:none; width:210mm; background:white;">
-        <div style="display:flex; justify-content:space-between; border-bottom:2px solid black; padding-bottom:5px; margin-bottom:10px;">
-            <div><h1 style="font-size:16pt; font-weight:bold; margin:0;">ESA - ELECOMP - ASCENSORI</h1><p style="font-size:10pt; margin:0;">FOGLIO DI PRESENZA IMPIEGATI</p></div>
-            <div style="text-align:right; font-size:9pt;"><p id="pdfNome" style="font-weight:bold; margin:0;"></p><p id="pdfMese" style="margin:0;"></p></div>
+    <div id="pdf-template">
+        <div style="display:flex; justify-content:space-between; border-bottom:2px solid black; padding-bottom:8px; margin-bottom:15px;">
+            <div><h1 style="font-size:18pt; font-weight:bold; margin:0;">ESA - ELECOMP - ASCENSORI</h1><p style="font-size:10pt; margin:0;">FOGLIO DI PRESENZA IMPIEGATI</p></div>
+            <div style="text-align:right; font-size:10pt;"><p id="pdfNome" style="font-weight:bold; margin:0;"></p><p id="pdfMese" style="margin:0;"></p></div>
         </div>
         <table class="pdf-table">
             <thead><tr><th>GIORNO</th><th>ENTRATA</th><th>PAUSA</th><th>PRANZO</th><th>USCITA</th><th>ORD.</th><th>STRA.</th><th>ASS.</th><th>TIPO</th></tr></thead>
             <tbody id="pdfRows"></tbody>
-            <tfoot><tr style="font-weight:bold;"><td colspan="5">TOTALI</td><td id="tOrd"></td><td id="tStr"></td><td id="tAss"></td><td></td></tr></tfoot>
+            <tfoot><tr style="font-weight:bold; background-color: #f3f4f6;"><td colspan="5">TOTALI</td><td id="tOrd"></td><td id="tStr"></td><td id="tAss"></td><td></td></tr></tfoot>
         </table>
-        <div style="margin-top:20px; font-size:8pt; display:flex; justify-content:space-between;">
-            <div>TARGA AUTO: <span id="pdfTarga"></span></div>
-            <div style="display:flex; gap:30px;"><div style="border-top:1px solid black; width:100px; text-align:center;">Firma Dipendente</div><div style="border-top:1px solid black; width:100px; text-align:center;">Firma Responsabile</div></div>
+        <div style="margin-top:30px; font-size:9pt; display:flex; justify-content:space-between; align-items: flex-end;">
+            <div style="border: 1px solid black; padding: 10px;">TARGA AUTO: <span id="pdfTarga" style="font-weight:bold;"></span></div>
+            <div style="display:flex; gap:50px;"><div style="border-top:1px solid black; width:120px; text-align:center; padding-top:5px;">Firma Dipendente</div><div style="border-top:1px solid black; width:120px; text-align:center; padding-top:5px;">Firma Responsabile</div></div>
         </div>
     </div>
 
@@ -186,7 +196,7 @@
                 let ord = Math.min(worked, 480);
                 let ass = Math.max(0, 480 - ord);
                 if(ass > 0 && !tipo) return alert("Assenza rilevata: inserisci un codice");
-                datiMese[i] = {...datiMese[i], e, u, p:'12:00', pr:'13:00', tipo, ord, ass, str: Math.max(0, parseMin(u) - parseMin(1020))};
+                datiMese[i] = {...datiMese[i], e, u, p:'12:00', pr:'13:00', tipo, ord, ass, str: Math.max(0, parseMin(u) - parseMin("17:00"))};
             }
             
             localStorage.setItem(`esa_v2_${document.getElementById('anno').value}_${document.getElementById('mese').value}`, JSON.stringify(datiMese));
@@ -219,6 +229,9 @@
             vaiAPagina(3);
         }
 
+        // Funzione per formattare senza mostrare "0:00" 
+        function formatSafe(m) { return m > 0 ? format(m) : ''; }
+
         function generaPDF() {
             const p = JSON.parse(localStorage.getItem('esa_profilo_v2'));
             const meseTesto = document.getElementById('mese').options[document.getElementById('mese').selectedIndex].text + " " + document.getElementById('anno').value;
@@ -230,23 +243,36 @@
             let h="", tO=0, tS=0, tA=0;
             datiMese.forEach(r => {
                 tO+=r.ord; tS+=r.str; tA+=r.ass;
-                h += `<tr><td>${r.dw} ${r.giorno}</td><td>${r.e}</td><td>${r.e?'12:00':''}</td><td>${r.e?'13:00':''}</td><td>${r.u}</td><td>${format(r.ord)}</td><td>${format(r.str)}</td><td>${format(r.ass)}</td><td>${r.tipo}</td></tr>`;
+                h += `<tr>
+                    <td>${r.dw} ${r.giorno}</td>
+                    <td>${r.e}</td>
+                    <td>${r.e?'12:00':''}</td>
+                    <td>${r.e?'13:00':''}</td>
+                    <td>${r.u}</td>
+                    <td>${formatSafe(r.ord)}</td>
+                    <td>${formatSafe(r.str)}</td>
+                    <td>${formatSafe(r.ass)}</td>
+                    <td>${r.tipo}</td>
+                </tr>`;
             });
             
             document.getElementById('pdfRows').innerHTML = h;
             document.getElementById('tOrd').innerText = format(tO);
-            document.getElementById('tStr').innerText = format(tS);
-            document.getElementById('tAss').innerText = format(tA);
+            document.getElementById('tStr').innerText = formatSafe(tS);
+            document.getElementById('tAss').innerText = formatSafe(tA);
 
             const el = document.getElementById('pdf-template');
             el.style.display = 'block';
-            html2pdf().from(el).set({
-                margin: 10,
+            
+            const opt = {
+                margin: [10, 10, 10, 10], // Margini uniformi 
                 filename: `Presenze_${p.nome}_${meseTesto}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            }).save().then(() => { el.style.display = 'none'; });
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } // Formato A4 centrato 
+            };
+
+            html2pdf().from(el).set(opt).save().then(() => { el.style.display = 'none'; });
         }
 
         function parseMin(t) { if(!t || typeof t !== 'string') return 0; const [h,m]=t.split(':').map(Number); return h*60+m; }
