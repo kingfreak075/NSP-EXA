@@ -744,50 +744,58 @@
         }
 
          function salvaGiorno() {
-    // 1. Recupero i riferimenti e i dati dal modulo
     const record = datiMese[indexCorrente];
     const assenzaTotale = document.getElementById('assenzaTotale').checked;
-    const tipoScelto = document.getElementById('editTipo').value;
+    const tipoScelto = document.getElementById('editTipo').value; // Il valore del menu a tendina
     const entrata = document.getElementById('editEntrata').value;
     const uscita = document.getElementById('editUscita').value;
-    
-    // 2. Lettura Pausa Personalizzata (es. 30, 40, 60 minuti)
     const pausa = parseInt(document.getElementById('editPausa').value) || 0;
     
     let ord = 0, str = 0, ass = 0, nota = tipoScelto;
     
+    // --- BLOCCO DI SICUREZZA ---
+    // Se non è assenza totale e non è weekend/festivo
+    if (!assenzaTotale && !record.isFestivo) {
+        let minE = parseMin(entrata);
+        let minU = parseMin(uscita);
+        if (minU < minE) minU += 1440;
+        let minutiLavorati = (minU - minE) - pausa;
+
+        // Se le ore sono meno di 8 (480 min) e NON hai scelto un codice assenza
+        if (minutiLavorati < 480 && !tipoScelto) {
+            alert("⚠️ ATTENZIONE: Le ore lavorate sono meno di 8. Devi selezionare un codice assenza (Ferie, Permesso, ecc.) o completare l'orario.");
+            return; // Blocca il salvataggio
+        }
+    }
+    // ---------------------------
+
     if(assenzaTotale) {
-        // Se è assenza totale, forziamo 8 ore (480 min) di assenza
         ass = 480;
         ord = 0;
         str = 0;
+        // Obbligo codice anche per assenza totale
+        if (!tipoScelto) {
+            alert("⚠️ Seleziona il tipo di assenza (es. FERIE o MALATTIA)");
+            return;
+        }
     } else if(entrata && uscita) {
-        // Calcolo minuti con gestione della mezzanotte
         let minE = parseMin(entrata);
         let minU = parseMin(uscita);
         if (minU < minE) minU += 1440; 
-        
-        // Sottraiamo la pausa scelta dai minuti totali tra entrata e uscita
         let minutiLavorati = (minU - minE) - pausa;
-        if(minutiLavorati < 0) minutiLavorati = 0;
         
-        // Logica Note Automatiche
-        if (!record.isFestivo && !tipoScelto) {
-            if (minU < 1020 && minutiLavorati >= 480) {
-                nota = "Uscita Anticipata in Recupero Pausa Pranzo";
-            } else if (pausa < 60 && minutiLavorati > 480) {
-                nota = "STRAORD. PAUSA RIDOTTA";
-            }
-        }
-
         if(record.isFestivo) {
-            // Se è sabato, domenica o festivo calendario: tutto straordinario
             ord = 0;
             str = minutiLavorati;
-            // Se è un festivo "76", mantiene le 8h di assenza retribuita
             ass = (tipoScelto === "76-FESTIVITA") ? 480 : 0;
         } else {
-            // Giorno feriale standard: lo straordinario scatta SOLO sopra i 480 min effettivi
+            // Logica automatica recupero (solo se non c'è già un codice manuale)
+            if (!tipoScelto && minU < 1020 && minutiLavorati >= 480) {
+                nota = "Uscita Anticipata in Recupero Pausa Pranzo";
+            } else if (!tipoScelto && pausa < 60 && minutiLavorati > 480) {
+                nota = "STRAORD. PAUSA RIDOTTA";
+            }
+
             if(minutiLavorati >= 480) {
                 ord = 480;
                 str = minutiLavorati - 480;
@@ -800,29 +808,23 @@
         }
     }
     
-    // 3. Aggiornamento dell'array globale datiMese con il nuovo campo pausa
+    // Aggiornamento dati e salvataggio
     datiMese[indexCorrente] = {
         ...record,
         e: assenzaTotale ? '' : entrata,
         u: assenzaTotale ? '' : uscita,
-        pausa: pausa, // Importante: salviamo la pausa per usarla nel PDF
+        pausa: pausa,
         ord: ord,
         str: str,
         ass: ass,
         tipo: nota
     };
     
-    // 4. Salvataggio nel LocalStorage e aggiornamento UI
     const mese = document.getElementById('mese').value;
     const anno = document.getElementById('anno').value;
     localStorage.setItem(`esa_v4_${anno}_${mese}`, JSON.stringify(datiMese));
-
-    mostraNotificaBackup();
     
-// LOGICA BACKUP AUTOMATICO: Chiedi ogni 5 modifiche o semplicemente offri il tasto
-console.log("Dati salvati localmente.");
-
-
+    mostraNotificaBackup(); // Feedback visivo che abbiamo aggiunto
     aggiornaUI();
     vaiAPagina(2);
 }
