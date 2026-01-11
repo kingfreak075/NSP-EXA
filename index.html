@@ -1,42 +1,60 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESA - Smart Tracker V2</title>
+    <title>ESA - Smart Tracker V4.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         .page { display: none; }
         .page.active { display: block; }
-        /* Stile per il template PDF centrato */
-        #pdf-template { 
-            width: 190mm; /* Leggermente più stretto per i margini */
-            margin: 0 auto;
-            background: white; 
-            display: none; 
-            color: black; 
-            font-family: Arial, sans-serif; 
+        
+        @media print {
+            @page { size: A4; margin: 10mm 8mm; }
+            body { background: white; -webkit-print-color-adjust: exact; }
+            .no-print { display: none; }
+            .print-only { display: block !important; }
+            
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; border: 1.5pt solid rgb(10, 10, 10); }
+            th, td { 
+    border: 1px solid #030303 !important; /* Colore grigio per i bordi */
+    padding: 1px 2px;                 /* Riduce lo spazio interno */
+    font-size: 8pt; 
+    text-align: center; 
+    height: 21px;                      /* Riduce l'altezza della cella */
+    line-height: 1;
+}
+            th { 
+                background-color: #f0f0f0 !important; 
+                font-weight: bold; 
+                text-transform: uppercase;
+                border: 1pt solid black !important;
+            }
+            .header-container { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: flex-end;
+                border-bottom: 2pt solid black; 
+                padding-bottom: 8px; 
+            }
+            .logo-img { height: 55px; }
+            .festivo-text { color: #e11d48 !important; font-weight: bold !important; background-color: #fff1f2 !important; }
+            .total-row { background-color: #f8fafc !important; font-weight: bold; border-top: 1.5pt solid black !important; }
         }
-        .pdf-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .pdf-table th, .pdf-table td { border: 1px solid black; padding: 6px; text-align: center; font-size: 8pt; height: 25px; }
-        .pdf-table th { background-color: #f3f4f6; }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
 
-    <div id="page1" class="page active max-w-md mx-auto p-6">
-        <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-blue-600">
-            <h1 class="text-2xl font-black text-slate-800 mb-2">ESA ELECOMP</h1>
-            <p id="statoUtente" class="text-sm text-slate-500 mb-6 text-center italic">I tuoi dati verranno memorizzati</p>
-            
-            <div class="space-y-4">
-                <input id="nome" type="text" placeholder="Nome e Cognome" class="w-full p-4 border rounded-2xl shadow-sm">
-                <input id="targa" type="text" placeholder="Targa Auto" class="w-full p-4 border rounded-2xl shadow-sm">
-                
-                <div class="bg-slate-50 p-4 rounded-2xl border">
-                    <label class="text-[10px] font-bold text-slate-400 block mb-2 uppercase text-center">Periodo da gestire</label>
+    <div class="no-print">
+        <div id="page1" class="page active max-w-md mx-auto p-6">
+            <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-blue-600">
+                <div class="flex justify-center mb-4">
+                    <img src="logo.png" alt="ESA Logo" class="h-12">
+                </div>
+                <h1 class="text-xl font-black text-center text-slate-800 mb-6">CONFIGURAZIONE PRESENZE</h1>
+                <div class="space-y-4">
+                    <input id="nome" type="text" placeholder="Nome e Cognome" class="w-full p-4 border rounded-2xl shadow-sm">
+                    <input id="targa" type="text" placeholder="Targa Auto" class="w-full p-4 border rounded-2xl shadow-sm">
                     <div class="grid grid-cols-2 gap-4">
                         <select id="mese" class="p-4 border rounded-2xl bg-white shadow-sm">
                             <option value="0">Gennaio</option><option value="1">Febbraio</option><option value="2">Marzo</option>
@@ -46,250 +64,282 @@
                         </select>
                         <input id="anno" type="number" value="2026" class="p-4 border rounded-2xl shadow-sm">
                     </div>
+                    <button onclick="configurazioneIniziale()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all uppercase">Carica Calendario</button>
                 </div>
-
-                <button onclick="configurazioneIniziale()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">ACCEDI AL FOGLIO</button>
-                <button onclick="resetTotale()" class="w-full text-red-400 text-xs py-2">Elimina tutti i dati salvati</button>
             </div>
         </div>
-    </div>
 
-    <div id="page2" class="page max-w-md mx-auto p-4 pb-24">
-        <div class="flex justify-between items-center mb-4 px-2">
-            <h2 id="titoloPagina2" class="font-bold text-slate-700 text-lg"></h2>
-            <button onclick="vaiAPagina(1)" class="text-blue-600 text-xs font-bold bg-blue-50 px-3 py-1 rounded-full text-center">CAMBIA MESE</button>
-        </div>
-        <div id="listaGiorni" class="space-y-2"></div>
-        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t">
-            <button onclick="generaPDF()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-lg">SCARICA PDF</button>
-        </div>
-    </div>
-
-    <div id="page3" class="page max-w-md mx-auto p-6">
-        <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-orange-500">
-            <h2 id="giornoModifica" class="text-xl font-bold mb-4">Dettaglio</h2>
-            
-            <div class="space-y-4">
-                <div class="flex items-center justify-between bg-slate-100 p-3 rounded-xl">
-                    <span class="text-sm font-bold">Assenza tutto il giorno?</span>
-                    <input type="checkbox" id="assenzaTotale" onchange="toggleAssenzaView()" class="w-6 h-6">
+        <div id="page2" class="page max-w-md mx-auto p-4 pb-24">
+            <div class="flex justify-between items-center mb-6 px-2">
+                <div>
+                    <h2 id="titoloPagina2" class="font-black text-2xl text-slate-800"></h2>
+                    <p id="sottotitoloNome" class="text-sm text-slate-500 font-medium"></p>
                 </div>
+                <button onclick="vaiAPagina(1)" class="bg-white border-2 border-slate-200 p-2 rounded-xl hover:bg-slate-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+            </div>
+            <div id="listaGiorni" class="space-y-3"></div>
+            <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-lg border-t border-slate-200">
+                <button onclick="window.print()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-black transition-all">STAMPA FOGLIO PRESENZE</button>
+            </div>
+        </div>
 
-                <div id="campiOrario" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-[10px] font-bold text-slate-400 uppercase">Entrata</label><select id="editEntrata" onchange="calcolaAnteprima()" class="w-full p-3 border rounded-xl"></select></div>
-                        <div><label class="text-[10px] font-bold text-slate-400 uppercase">Uscita</label><select id="editUscita" onchange="calcolaAnteprima()" class="w-full p-3 border rounded-xl"></select></div>
+        <div id="page3" class="page max-w-md mx-auto p-6">
+            <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-orange-500">
+                <h2 id="giornoModifica" class="text-2xl font-black mb-6 text-slate-800"></h2>
+                <div class="space-y-5">
+                    <label class="flex items-center justify-between bg-orange-50 p-4 rounded-2xl border-2 border-orange-100 cursor-pointer">
+                        <span class="font-bold text-orange-800">Assenza Intera Giornata</span>
+                        <input type="checkbox" id="assenzaTotale" onchange="toggleAssenzaView()" class="w-6 h-6 accent-orange-500">
+                    </label>
+                    <div id="campiOrario" class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-400 ml-1">ENTRATA</label>
+                            <select id="editEntrata" class="w-full p-4 border-2 rounded-2xl bg-white focus:border-orange-500 outline-none transition-all"></select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-400 ml-1">USCITA</label>
+                            <select id="editUscita" class="w-full p-4 border-2 rounded-2xl bg-white focus:border-orange-500 outline-none transition-all"></select>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-400 ml-1">MOTIVAZIONE / CODICE</label>
+                        <select id="editTipo" class="w-full p-3 border rounded-xl bg-white text-sm">
+                            <option value="">Lavoro Ordinario / Straord. Weekend</option>
+                            <option value="72-ASSEMBLEA RETRIBUITA">72 - ASSEMBLEA RETRIBUITA</option>
+                            <option value="73-SCIOPERO">73 - SCIOPERO</option>
+                            <option value="75-FERIE">75 - FERIE</option>
+                            <option value="76-FESTIVITA">76 - FESTIVITA</option>
+                            <option value="77-MALATTIA">77 - MALATTIA</option>
+                            <option value="78-INFORTUNIO">78 - INFORTUNIO</option>
+                            <option value="79-DONAZIONE SANGUE">79 - DONAZIONE SANGUE</option>
+                            <option value="82-PERMESSO RETRIBUITO">82 - PERMESSO RETRIBUITO</option>
+                            <option value="84-PERMESSO NON RETRIBUITO">84 - PERMESSO NON RETRIBUITO</option>
+                            <option value="85-PERMESSO ELETTORALE">85 - PERMESSO ELETTORALE</option>
+                            <option value="86-PERMESSO LUTTO">86 - PERMESSO LUTTO</option>
+                            <option value="87-PERMESSO SINDACALE">87 - PERMESSO SINDACALE</option>
+                            <option value="88-PERMESSO STUDIO">88 - PERMESSO STUDIO</option>
+                            <option value="93-CONGEDO PATERNITA'">93 - CONGEDO PATERNITA'</option>
+                            <option value="94-CONGEDO PARENTALE">94 - CONGEDO PARENTALE</option>
+                            <option value="95-SMART WORKING">95 - SMART WORKING</option>
+                        </select>
+                    </div>
+                    <div class="pt-4 space-y-3">
+                        <button onclick="salvaGiorno()" class="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-orange-600 transition-all uppercase">Conferma e Salva</button>
+                        <button onclick="vaiAPagina(2)" class="w-full text-slate-400 py-2 font-bold hover:text-slate-600">Annulla</button>
                     </div>
                 </div>
-
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase">Codice Assenza (se necessaria)</label>
-                    <select id="editTipo" class="w-full p-3 border rounded-xl bg-white text-sm">
-                        <option value="">Lavoro Ordinario</option>
-                        <option value="72-ASSEMBLEA RETRIBUITA">72 - ASSEMBLEA RETRIBUITA</option>
-                        <option value="73-SCIOPERO">73 - SCIOPERO</option>
-                        <option value="75-FERIE">75 - FERIE</option>
-                        <option value="76-FESTIVITA">76 - FESTIVITA</option>
-                        <option value="77-MALATTIA">77 - MALATTIA</option>
-                        <option value="78-INFORTUNIO">78 - INFORTUNIO</option>
-                        <option value="79-DONAZIONE SANGUE">79 - DONAZIONE SANGUE</option>
-                        <option value="82-PERMESSO RETRIBUITO">82 - PERMESSO RETRIBUITO</option>
-                        <option value="84-PERMESSO NON RETRIBUITO">84 - PERMESSO NON RETRIBUITO</option>
-                        <option value="85-PERMESSO ELETTORALE">85 - PERMESSO ELETTORALE</option>
-                        <option value="86-PERMESSO LUTTO">86 - PERMESSO LUTTO</option>
-                        <option value="87-PERMESSO SINDACALE">87 - PERMESSO SINDACALE</option>
-                        <option value="88-PERMESSO STUDIO">88 - PERMESSO STUDIO</option>
-                        <option value="93-CONGEDO PATERNITA'">93 - CONGEDO PATERNITA'</option>
-                        <option value="94-CONGEDO PARENTALE">94 - CONGEDO PARENTALE</option>
-                        <option value="95-SMART WORKING">95 - SMART WORKING</option>
-                    </select>
-                </div>
-
-                <div class="bg-slate-50 p-3 rounded-xl text-xs" id="anteprimaCalcolo"></div>
-
-                <button onclick="salvaGiorno()" class="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold shadow-lg">SALVA</button>
-                <button onclick="vaiAPagina(2)" class="w-full text-slate-400 py-2 text-sm">Annulla</button>
             </div>
         </div>
     </div>
 
-    <div id="pdf-template">
-        <div style="display:flex; justify-content:space-between; border-bottom:2px solid black; padding-bottom:8px; margin-bottom:15px;">
-            <div><h1 style="font-size:18pt; font-weight:bold; margin:0;">ESA - ELECOMP - ASCENSORI</h1><p style="font-size:10pt; margin:0;">FOGLIO DI PRESENZA IMPIEGATI</p></div>
-            <div style="text-align:right; font-size:10pt;"><p id="pdfNome" style="font-weight:bold; margin:0;"></p><p id="pdfMese" style="margin:0;"></p></div>
+    <div id="print-area" class="hidden print-only p-4 bg-white">
+        <div class="header-container">
+            <div>
+                <img src="logo.png" class="logo-img" alt="ESA Logo">
+                <p style="font-size: 9pt; font-weight: 800; margin-top: 5px; color: #333;">FILIALE BOLOGNA</p>
+                <p style="font-size: 10pt; font-weight: 900; letter-spacing: 1px; margin-top: 2px;">FOGLIO PRESENZA IMPIEGATI</p>
+            </div>
+            <div style="text-align: right;">
+                <p id="print-nome" style="font-weight: 900; font-size: 14pt; margin: 0; line-height: 1;"></p>
+                <p id="print-mese" style="font-size: 11pt; font-weight: 700; margin-top: 5px; text-transform: uppercase; color: #444;"></p>
+            </div>
         </div>
-        <table class="pdf-table">
-            <thead><tr><th>GIORNO</th><th>ENTRATA</th><th>PAUSA</th><th>PRANZO</th><th>USCITA</th><th>ORD.</th><th>STRA.</th><th>ASS.</th><th>TIPO</th></tr></thead>
-            <tbody id="pdfRows"></tbody>
-            <tfoot><tr style="font-weight:bold; background-color: #f3f4f6;"><td colspan="5">TOTALI</td><td id="tOrd"></td><td id="tStr"></td><td id="tAss"></td><td></td></tr></tfoot>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 15%;">GIORNO</th>
+                    <th style="width: 10%;">ENTRATA</th>
+                    <th style="width: 8%;">Inizio</th>
+                    <th style="width: 8%;">Fine</th>
+                    <th style="width: 10%;">USCITA</th>
+                    <th style="width: 8%;">ORD.</th>
+                    <th style="width: 8%;">STRAORD.</th>
+                    <th style="width: 8%;">ASSENZA</th>
+                    <th style="width: 16%;">TIPO ASSENZA</th>
+                </tr>
+            </thead>
+            <tbody id="print-rows"></tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="5" style="text-align: right; padding-right: 15px; border-right: 1.5pt solid black !important;">TOTALI DEL MESE</td>
+                    <td id="t-ord"></td>
+                    <td id="t-str"></td>
+                    <td id="t-ass"></td>
+                    <td style="background: white;"></td>
+                </tr>
+            </tfoot>
         </table>
-        <div style="margin-top:30px; font-size:9pt; display:flex; justify-content:space-between; align-items: flex-end;">
-            <div style="border: 1px solid black; padding: 10px;">TARGA AUTO: <span id="pdfTarga" style="font-weight:bold;"></span></div>
-            <div style="display:flex; gap:50px;"><div style="border-top:1px solid black; width:120px; text-align:center; padding-top:5px;">Firma Dipendente</div><div style="border-top:1px solid black; width:120px; text-align:center; padding-top:5px;">Firma Responsabile</div></div>
+
+        <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="border: 1pt solid rgb(82, 81, 81); padding: 10px; width: 240px;">
+                <p style="margin: 0; font-size: 8pt; font-weight: bold;">DETTAGLI VEICOLO:</p>
+                <p style="margin: 5px 0 0 0; font-size: 10pt;">TARGA: <strong id="print-targa"></strong></p>
+                <p style="margin: 5px 0 0 0; font-size: 8pt; color: #666;">Data Stampa: <span id="print-date"></span></p>
+            </div>
+            <div style="display: flex; gap: 50px;">
+                <div style="text-align: center; width: 180px;">
+                    <div style="height: 40px;"></div>
+                    <p style="border-top: 1pt solid black; padding-top: 5px; font-size: 7pt; font-weight: bold;">FIRMA DEL DIPENDENTE</p>
+                </div>
+                <div style="text-align: center; width: 180px;">
+                    <div style="height: 40px;"></div>
+                    <p style="border-top: 1pt solid black; padding-top: 5px; font-size: 7pt; font-weight: bold;">FIRMA DEL RESPONSABILE</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         let datiMese = [];
-        let giornoCorrenteIndex = null;
+        let indexCorrente = -1;
+        const festivi = ["1-0","6-0","25-3","1-4","2-5","15-7","1-10","8-11","25-11","26-11"];
 
         function vaiAPagina(n) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById('page' + n).classList.add('active');
-        }
-
-        window.onload = function() {
-            const profilo = JSON.parse(localStorage.getItem('esa_profilo_v2'));
-            if(profilo) {
-                document.getElementById('nome').value = profilo.nome;
-                document.getElementById('targa').value = profilo.targa;
-                document.getElementById('statoUtente').innerText = "Dati memorizzati. Seleziona il mese.";
-            }
+            window.scrollTo(0,0);
         }
 
         function configurazioneIniziale() {
-            const nome = document.getElementById('nome').value;
-            const targa = document.getElementById('targa').value;
-            const mese = document.getElementById('mese').value;
-            const anno = document.getElementById('anno').value;
-            if(!nome || !targa) return alert("Inserisci Nome e Targa");
-
-            localStorage.setItem('esa_profilo_v2', JSON.stringify({nome, targa}));
-            const key = `esa_v2_${anno}_${mese}`;
-            const esistente = localStorage.getItem(key);
-            
-            if(esistente) datiMese = JSON.parse(esistente);
-            else generaDefault(mese, anno);
-
-            document.getElementById('titoloPagina2').innerText = `${document.getElementById('mese').options[mese].text} ${anno}`;
-            renderLista();
-            vaiAPagina(2);
+            const n = document.getElementById('nome').value, t = document.getElementById('targa').value, m = document.getElementById('mese').value, a = document.getElementById('anno').value;
+            if(!n || !t) return alert("Dati mancanti: Inserisci Nome e Targa Auto.");
+            localStorage.setItem('esa_v4_profile', JSON.stringify({nome:n, targa:t}));
+            const key = `esa_v4_${a}_${m}`;
+            const salvati = localStorage.getItem(key);
+            if(salvati) datiMese = JSON.parse(salvati); else generaMese(m, a);
+            aggiornaUI(); vaiAPagina(2);
         }
 
-        function generaDefault(mese, anno) {
-            const giorni = new Date(anno, parseInt(mese) + 1, 0).getDate();
+        function generaMese(mese, anno) {
+            const num = new Date(anno, parseInt(mese) + 1, 0).getDate();
             datiMese = [];
-            for(let d=1; d<=giorni; d++) {
-                let data = new Date(anno, mese, d);
-                let dw = data.getDay();
-                let r = { giorno: d, dw: data.toLocaleDateString('it-IT',{weekday:'short'}).toUpperCase(), e:'', p:'', pr:'', u:'', tipo:'', ord:0, str:0, ass:0 };
-                if(dw !== 0 && dw !== 6) {
-                    if(isFestivo(d, mese)) { r.tipo = "76-FESTIVITA"; r.ass = 480; }
-                    else { r.e = "08:00"; r.u = "17:00"; r.ord = 480; }
-                }
+            for(let d=1; d<=num; d++) {
+                let dt = new Date(anno, mese, d);
+                let dw = dt.toLocaleDateString('it-IT',{weekday:'short'}).toUpperCase();
+                let day = dt.getDay(); 
+                let isF = festivi.includes(`${d}-${mese}`) || day === 0 || day === 6;
+                let r = { giorno: d, dw, isFestivo: isF, e:'', u:'', tipo:'', ord:0, str:0, ass:0 };
+                if(!isF) { r.e = "08:00"; r.u = "17:00"; r.ord = 480; } 
+                else if(festivi.includes(`${d}-${mese}`)) { r.tipo = "76-FESTIVITA"; r.ass = 480; }
                 datiMese.push(r);
             }
         }
 
-        function salvaGiorno() {
-            const i = giornoCorrenteIndex;
-            const isAssente = document.getElementById('assenzaTotale').checked;
-            const tipo = document.getElementById('editTipo').value;
-
-            if(isAssente) {
-                if(!tipo) return alert("Scegli un codice assenza");
-                datiMese[i] = {...datiMese[i], e:'', u:'', p:'', pr:'', tipo, ord: 0, str: 0, ass: 480};
-            } else {
-                let e = document.getElementById('editEntrata').value;
-                let u = document.getElementById('editUscita').value;
-                let worked = Math.max(0, (parseMin(u) - parseMin(e)) - 60);
-                let ord = Math.min(worked, 480);
-                let ass = Math.max(0, 480 - ord);
-                if(ass > 0 && !tipo) return alert("Assenza rilevata: inserisci un codice");
-                datiMese[i] = {...datiMese[i], e, u, p:'12:00', pr:'13:00', tipo, ord, ass, str: Math.max(0, parseMin(u) - parseMin("17:00"))};
-            }
+        function aggiornaUI() {
+            const p = JSON.parse(localStorage.getItem('esa_v4_profile'));
+            const mIdx = document.getElementById('mese').value;
+            const meseNome = document.getElementById('mese').options[mIdx].text;
+            const annoText = document.getElementById('anno').value;
             
-            localStorage.setItem(`esa_v2_${document.getElementById('anno').value}_${document.getElementById('mese').value}`, JSON.stringify(datiMese));
-            renderLista();
-            vaiAPagina(2);
+            document.getElementById('titoloPagina2').innerText = `${meseNome} ${annoText}`;
+            document.getElementById('sottotitoloNome').innerText = p.nome.toUpperCase();
+            document.getElementById('print-nome').innerText = p.nome.toUpperCase();
+            document.getElementById('print-mese').innerText = `${meseNome} ${annoText}`;
+            document.getElementById('print-targa').innerText = p.targa.toUpperCase();
+            document.getElementById('print-date').innerText = new Date().toLocaleDateString('it-IT');
+            renderApp(); renderPrint();
         }
 
-        function renderLista() {
-            const cont = document.getElementById('listaGiorni');
-            cont.innerHTML = datiMese.map((r, i) => `
-                <div onclick="apriModifica(${i})" class="bg-white p-3 rounded-xl shadow-sm flex justify-between border-l-4 ${r.dw === 'DOM' ? 'border-red-400' : (r.ord > 0 || r.ass > 0 ? 'border-blue-500' : 'border-slate-200')}">
-                    <div class="text-sm">
-                        <span class="font-bold">${r.dw} ${r.giorno}</span>
-                        <div class="text-[10px] text-slate-500">${r.tipo || (r.e ? r.e+' - '+r.u : 'Riposo')}</div>
+        function renderApp() {
+            document.getElementById('listaGiorni').innerHTML = datiMese.map((r, i) => {
+                let statusColor = r.isFestivo ? 'border-red-500 bg-red-50/30' : 'border-blue-500 bg-white';
+                let badge = r.str > 0 ? `<span class="bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">STRAORD.</span>` : 
+                           (r.ass > 0 ? `<span class="bg-orange-500 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">ASSENZA</span>` : '');
+                
+                return `
+                <div onclick="apriModifica(${i})" class="${statusColor} p-4 rounded-2xl shadow-sm flex justify-between items-center border-l-8 cursor-pointer active:scale-95 transition-all">
+                    <div>
+                        <span class="font-black text-lg ${r.isFestivo ? 'text-red-700' : 'text-slate-800'}">${r.dw} ${r.giorno}</span>
+                        ${badge}
                     </div>
-                    <div class="text-[10px] text-right font-mono">${r.ord > 0 ? format(r.ord) : ''}${r.ass > 0 ? '<br><span class="text-red-500">A:'+format(r.ass)+'</span>' : ''}</div>
-                </div>
-            `).join('');
+                    <div class="text-right">
+                        <p class="text-[11px] text-slate-500 font-bold uppercase">${r.tipo || (r.e ? r.e+' > '+r.u : 'Riposo')}</p>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderPrint() {
+            const tbody = document.getElementById('print-rows'); tbody.innerHTML = "";
+            let tO=0, tS=0, tA=0;
+            datiMese.forEach(r => {
+                tO+=r.ord; tS+=r.str; tA+=r.ass;
+                const cls = r.isFestivo ? 'class="festivo-text"' : '';
+                tbody.innerHTML += `<tr>
+                    <td ${cls}>${r.dw} ${r.giorno}</td>
+                    <td>${r.e}</td>
+                    <td>${(r.e && !r.isFestivo) ? '12:00' : ''}</td>
+<td>${(r.e && !r.isFestivo) ? '13:00' : ''}</td>
+                    <td>${r.u}</td>
+                    <td>${r.ord>0?format(r.ord):''}</td>
+                    <td>${r.str>0?format(r.str):''}</td>
+                    <td>${r.ass>0?format(r.ass):''}</td>
+                    <td style="text-align: left; padding-left: 5px; font-size: 7pt;">${r.tipo}</td>
+                </tr>`;
+            });
+            document.getElementById('t-ord').innerText = format(tO);
+            document.getElementById('t-str').innerText = format(tS);
+            document.getElementById('t-ass').innerText = format(tA);
         }
 
         function apriModifica(i) {
-            giornoCorrenteIndex = i;
-            const r = datiMese[i];
+            indexCorrente = i; const r = datiMese[i];
             document.getElementById('giornoModifica').innerText = `${r.dw} ${r.giorno}`;
             document.getElementById('editEntrata').value = r.e || "08:00";
             document.getElementById('editUscita').value = r.u || "17:00";
             document.getElementById('editTipo').value = r.tipo;
             document.getElementById('assenzaTotale').checked = (r.ass === 480 && !r.e);
-            toggleAssenzaView();
-            vaiAPagina(3);
+            toggleAssenzaView(); vaiAPagina(3);
         }
 
-        // Funzione per formattare senza mostrare "0:00" 
-        function formatSafe(m) { return m > 0 ? format(m) : ''; }
+        function salvaGiorno() {
+            const r = datiMese[indexCorrente];
+            const isA = document.getElementById('assenzaTotale').checked;
+            const tipo = document.getElementById('editTipo').value;
+            let ord=0, str=0, ass=0, ent='', usc='';
 
-        function generaPDF() {
-            const p = JSON.parse(localStorage.getItem('esa_profilo_v2'));
-            const meseTesto = document.getElementById('mese').options[document.getElementById('mese').selectedIndex].text + " " + document.getElementById('anno').value;
-            
-            document.getElementById('pdfNome').innerText = p.nome.toUpperCase();
-            document.getElementById('pdfTarga').innerText = p.targa.toUpperCase();
-            document.getElementById('pdfMese').innerText = meseTesto.toUpperCase();
-            
-            let h="", tO=0, tS=0, tA=0;
-            datiMese.forEach(r => {
-                tO+=r.ord; tS+=r.str; tA+=r.ass;
-                h += `<tr>
-                    <td>${r.dw} ${r.giorno}</td>
-                    <td>${r.e}</td>
-                    <td>${r.e?'12:00':''}</td>
-                    <td>${r.e?'13:00':''}</td>
-                    <td>${r.u}</td>
-                    <td>${formatSafe(r.ord)}</td>
-                    <td>${formatSafe(r.str)}</td>
-                    <td>${formatSafe(r.ass)}</td>
-                    <td>${r.tipo}</td>
-                </tr>`;
-            });
-            
-            document.getElementById('pdfRows').innerHTML = h;
-            document.getElementById('tOrd').innerText = format(tO);
-            document.getElementById('tStr').innerText = formatSafe(tS);
-            document.getElementById('tAss').innerText = formatSafe(tA);
+            if(isA) {
+                if(!tipo) return alert("Scegli un codice/motivo per l'assenza.");
+                ass = 480;
+            } else {
+                ent = document.getElementById('editEntrata').value;
+                usc = document.getElementById('editUscita').value;
+                let min = (parseMin(usc) - parseMin(ent));
+                
+                // LOGICA PAUSA PRANZO AGGIORNATA
+                // Se NON è Sabato/Domenica/Festivo e lavora più di 4 ore, togli 60 min
+                if(!r.isFestivo && min > 240) {
+                    min -= 60; 
+                }
+                // Se è FESTIVO/SABATO/DOMENICA, non togliamo nulla (es. 8-13 = 5h)
 
-            const el = document.getElementById('pdf-template');
-            el.style.display = 'block';
-            
-            const opt = {
-                margin: [10, 10, 10, 10], // Margini uniformi 
-                filename: `Presenze_${p.nome}_${meseTesto}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } // Formato A4 centrato 
-            };
-
-            html2pdf().from(el).set(opt).save().then(() => { el.style.display = 'none'; });
+                if(r.isFestivo) { 
+                    ord = 0; str = min; ass = 0;
+                } else {
+                    if(min >= 480) { ord = 480; str = min - 480; }
+                    else { ord = min; ass = 480 - min; if(!tipo) return alert("Ore inferiori a 8: inserisci motivo assenza."); }
+                }
+            }
+            datiMese[indexCorrente] = {...r, e:ent, u:usc, ord, str, ass, tipo};
+            localStorage.setItem(`esa_v4_${document.getElementById('anno').value}_${document.getElementById('mese').value}`, JSON.stringify(datiMese));
+            aggiornaUI(); vaiAPagina(2);
         }
 
-        function parseMin(t) { if(!t || typeof t !== 'string') return 0; const [h,m]=t.split(':').map(Number); return h*60+m; }
-        function format(m) { return m > 0 ? `${Math.floor(m/60)}:${(m%60).toString().padStart(2,'0')}` : '0:00'; }
-        function isFestivo(d, m) { return ["1-0","6-0","25-3","1-4","2-5","15-7","4-9","1-10","8-11","25-11","26-11"].includes(`${d}-${m}`); }
-        function toggleAssenzaView() { const isA = document.getElementById('assenzaTotale').checked; document.getElementById('campiOrario').style.opacity = isA ? "0.3" : "1"; document.getElementById('campiOrario').style.pointerEvents = isA ? "none" : "auto"; calcolaAnteprima(); }
-        function calcolaAnteprima() { const isA = document.getElementById('assenzaTotale').checked; let res = isA ? "8:00 ore assenza" : ""; if(!isA) { let e=parseMin(document.getElementById('editEntrata').value), u=parseMin(document.getElementById('editUscita').value), l=Math.max(0,(u-e)-60); res=`Ord: ${format(Math.min(l,480))} | Ass: ${format(Math.max(0,480-l))}`; } document.getElementById('anteprimaCalcolo').innerText=res; }
-        function resetTotale() { if(confirm("Cancellare tutto?")) { localStorage.clear(); location.reload(); } }
+        function parseMin(t) { const [h,m]=t.split(':').map(Number); return h*60+m; }
+        function format(m) { return m > 0 ? `${Math.floor(m/60)}:${(m%60).toString().padStart(2,'0')}` : ''; }
+        function toggleAssenzaView() { document.getElementById('campiOrario').style.opacity = document.getElementById('assenzaTotale').checked ? "0.2" : "1"; }
 
         (function() {
-            let opt = "";
-            for(let i=0; i<96; i++) {
-                let t = `${Math.floor(i/4).toString().padStart(2,'0')}:${(i%4*15).toString().padStart(2,'0')}`;
-                opt += `<option value="${t}">${t}</option>`;
-            }
-            document.getElementById('editEntrata').innerHTML = opt;
-            document.getElementById('editUscita').innerHTML = opt;
+            let h = ""; for(let i=0; i<96; i++) { let t = `${Math.floor(i/4).toString().padStart(2,'0')}:${(i%4*15).toString().padStart(2,'0')}`; h += `<option value="${t}">${t}</option>`; }
+            document.getElementById('editEntrata').innerHTML = h; document.getElementById('editUscita').innerHTML = h;
+            const p = JSON.parse(localStorage.getItem('esa_v4_profile'));
+            if(p) { document.getElementById('nome').value = p.nome; document.getElementById('targa').value = p.targa; }
         })();
     </script>
 </body>
