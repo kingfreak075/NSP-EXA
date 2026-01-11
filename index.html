@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESA - Smart Tracker V4.2</title>
-    <!-- Versione locale di Tailwind CSS per produzione -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <style>
@@ -73,7 +72,6 @@
             visibility: visible;
             opacity: 1;
         }
-        .errore-msg { color: #dc2626; font-size: 0.75rem; }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
@@ -83,8 +81,7 @@
         <div id="page1" class="page active max-w-md mx-auto p-6">
             <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-blue-600">
                 <div class="flex justify-center mb-4">
-                    <!-- In produzione, sostituisci con logo locale -->
-                    <div class="h-12 w-32 bg-blue-600 text-white flex items-center justify-center font-bold text-xl rounded-lg">ESA LOGO</div>
+                    <img src="logo.png" alt="ESA Logo" class="h-12">
                 </div>
                 <h1 class="text-xl font-black text-center text-slate-800 mb-6">CONFIGURAZIONE PRESENZE</h1>
                 <div class="space-y-4">
@@ -209,7 +206,7 @@
                         <select id="reportMese" class="p-4 border rounded-2xl bg-white shadow-sm">
                             <option value="0">Gennaio</option><option value="1">Febbraio</option><option value="2">Marzo</option>
                             <option value="3">Aprile</option><option value="4">Maggio</option><option value="5">Giugno</option>
-                            <option value="6">Luglio</option><option value="7">Agosto</option><option value="8">Settembre</option>
+                            <option value="6">Luglio</option><option value="7">Agosto</option value="8">Settembre</option>
                             <option value="9">Ottobre</option><option value="10">Novembre</option><option value="11">Dicembre</option>
                         </select>
                         <input id="reportAnno" type="number" min="2000" max="2100" value="2026" class="p-4 border rounded-2xl shadow-sm">
@@ -317,10 +314,7 @@
     <div id="print-area" class="hidden print-only p-4 bg-white">
         <div class="header-container">
             <div>
-                <!-- In produzione, sostituisci con logo locale -->
-                <div style="height: 55px; width: 120px; background-color: #2563eb; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; border-radius: 8px;">
-                    ESA LOGO
-                </div>
+                <img src="logo.png" class="logo-img" alt="ESA Logo">
                 <p style="font-size: 9pt; font-weight: 800; margin-top: 5px; color: #333;">FILIALE BOLOGNA</p>
                 <p style="font-size: 10pt; font-weight: 900; letter-spacing: 1px; margin-top: 2px;">FOGLIO PRESENZA IMPIEGATI</p>
             </div>
@@ -549,12 +543,12 @@
             for(let giorno = 1; giorno <= numGiorni; giorno++) {
                 const data = new Date(anno, mese, giorno);
                 const giornoSettimana = data.toLocaleDateString('it-IT',{weekday:'short'}).toUpperCase();
-                const festivo = isFestivo(giorno, parseInt(mese), parseInt(anno));
+                const isFestivo = isFestivo(giorno, parseInt(mese), parseInt(anno));
                 
                 const record = {
                     giorno: giorno,
                     dw: giornoSettimana,
-                    isFestivo: festivo,
+                    isFestivo: isFestivo,
                     e: '',
                     u: '',
                     tipo: '',
@@ -563,11 +557,11 @@
                     ass: 0
                 };
                 
-                if(!festivo) {
+                if(!isFestivo) {
                     record.e = "08:00";
                     record.u = "17:00";
                     record.ord = 480;
-                } else if(festivo) {
+                } else if(isFestivo) {
                     record.tipo = "76-FESTIVITA";
                     record.ass = 480;
                 }
