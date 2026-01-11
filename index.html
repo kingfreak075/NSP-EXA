@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESA - Smart Tracker V4.2</title>
+    <title>ESA - Foglio Orario  V8.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
@@ -105,6 +105,7 @@
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
+    <img id="logoPerPDF" src="logo.png" style="display: none;">
 
     <div id="toast-backup">✅ Backup Automatico Salvato</div>
 
@@ -206,7 +207,8 @@
                         <label class="text-xs font-bold text-slate-400 ml-1">MOTIVAZIONE / CODICE</label>
                         <select id="editTipo" class="w-full p-3 border rounded-xl bg-white text-sm">
                             <option value="">Lavoro Ordinario / Straord. Weekend</option>
-                            <option value="72-ASSEMBLEA RETRIBUITA">72 - ASSEMBLEA RETRIBUITA</option>
+                        
+                        <option value="72-ASSEMBLEA RETRIBUITA">72 - ASSEMBLEA RETRIBUITA</option>
                             <option value="73-SCIOPERO">73 - SCIOPERO</option>
                             <option value="75-FERIE">75 - FERIE</option>
                             <option value="76-FESTIVITA">76 - FESTIVITA</option>
@@ -222,6 +224,7 @@
                             <option value="93-CONGEDO PATERNITA'">93 - CONGEDO PATERNITA'</option>
                             <option value="94-CONGEDO PARENTALE">94 - CONGEDO PARENTALE</option>
                             <option value="95-SMART WORKING">95 - SMART WORKING</option>
+                            <option value="00-TURNO CONCORDATO">00 - TURNO CONCORDATO</option>
                         </select>
                     </div>
                     <div class="pt-4 space-y-3">
@@ -378,7 +381,7 @@
                     <th style="width: 8%;">ORD.</th>
                     <th style="width: 8%;">STRAORD.</th>
                     <th style="width: 8%;">ASSENZA</th>
-                    <th style="width: 25%;">TIPO ASSENZA</th>
+                    <th style="width: 25%;">TIPO ASSENZA - NOTE</th>
                 </tr>
             </thead>
             <tbody id="print-rows"></tbody>
@@ -579,7 +582,7 @@
             vaiAPagina(2);
          }
 
-         function generaMese(mese, anno) {
+       function generaMese(mese, anno) {
     const meseNum = parseInt(mese);
     const annoNum = parseInt(anno);
     const numGiorni = new Date(annoNum, meseNum + 1, 0).getDate();
@@ -599,28 +602,33 @@
             giorno: giorno,
             dw: data.toLocaleDateString('it-IT',{weekday:'short'}).toUpperCase(),
             isFestivo: isRossoCalendario || isWeekend,
-            e: '', u: '', tipo: '', ord: 0, str: 0, ass: 0
+            e: '', 
+            u: '', 
+            tipo: '', 
+            pausa: 60, // <--- AGGIUNTO: Ora ogni giorno nasce con 60 min di pausa
+            ord: 0, 
+            str: 0, 
+            ass: 0
         };
         
         if (isRossoCalendario) {
             record.tipo = "76-FESTIVITA";
             record.ass = 480;
+            // Nei festivi la pausa non serve, ma la lasciamo a 60 come base
         } else if (!isWeekend) {
             record.e = "08:00";
             record.u = "17:00";
             record.ord = 480;
         }
-        // I weekend rimangono con record.tipo = "" e record.ass = 0 come richiesto
+        
         listaLocali.push(record);
     }
+    
     datiMese = listaLocali;
 
-// --- NUOVA PARTE: SALVATAGGIO AUTOMATICO ---
-    // Questo assicura che il backup non sia mai vuoto
+    // Salvataggio automatico nel localStorage
     const chiave = `esa_v4_${annoNum}_${meseNum}`;
     localStorage.setItem(chiave, JSON.stringify(listaLocali));
-    // -------------------------------------------
-
 
     return listaLocali;
 }
@@ -644,29 +652,56 @@
 
          function renderApp() {
     const container = document.getElementById('listaGiorni');
+    if (!container) return;
+
     container.innerHTML = datiMese.map((record, index) => {
-        // 1. Definizione colori base (Standard o Festivo)
+        // 1. Definizione colori base
         let coloreBordo = record.isFestivo ? 'border-red-500 bg-red-50/30' : 'border-blue-500 bg-white';
         let badgeStyle = "bg-blue-600";
         let badgeText = "STRAORD.";
-
-        // 2. Modifica per STRAORD. PAUSA RIDOTTA (Magenta)
+        
+        // 2. Logica Simbolo Pausa Annullata
+        let simboloPausa = "";
+        if (!record.isFestivo && record.e && (record.pausa === 0 || !record.pausa)) {
+            simboloPausa = `<span title="Pausa non applicata" style="color: #ef4444; margin-left: 4px; font-style: normal;">🍽️​❌​</span>`;
+        }
+        
+        // 3. Modifica per STRAORD. PAUSA RIDOTTA (Magenta)
         if (record.tipo === "STRAORD. PAUSA RIDOTTA") {
-            coloreBordo = 'border-[#FF00FF] bg-[#FF00FF]/5'; // Bordo Magenta e sfondo leggerissimo
-            badgeStyle = "bg-[#FF00FF]"; // Badge Magenta
+            coloreBordo = 'border-[#FF00FF] bg-[#FF00FF]/5';
+            badgeStyle = "bg-[#FF00FF]";
             badgeText = "PAUSA RIDOTTA";
         }
 
-        // 3. Logica dei Badge
-        let badge = '';
-        if (record.str > 0) {
-            badge = `<span class="${badgeStyle} text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">${badgeText}</span>`;
-        } else if (record.ass > 0) {
-            badge = `<span class="bg-orange-500 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">ASSENZA</span>`;
-        }
+        // 4. Gestione dei Badge (Turno Concordato, Permesso, Straordinario o Assenza)
+let badge = '';
+
+if (record.tipo === "00-TURNO CONCORDATO") {
+    // Badge Verde Scuro per Turno Concordato
+    badge = `<span class="bg-emerald-700 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">TURNO CONCORDATO</span>`;
+} 
+else if (record.tipo && record.tipo.includes("PERMESSO ORARIO")) {
+    // Badge Azzurro/Ciano per Permesso Orario (Nuovo!)
+    badge = `<span class="bg-cyan-600 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">PERMESSO</span>`;
+} 
+else if (record.str > 0) {
+    // Badge Blu o Magenta per Straordinario
+    badge = `<span class="${badgeStyle} text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">${badgeText}</span>`;
+} 
+else if (record.ass > 0 && !record.isFestivo) {
+    // Badge Arancione per Assenza (solo se non è riposo/festivo standard)
+    badge = `<span class="bg-orange-500 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">ASSENZA</span>`;
+}
         
-        // 4. Testo orari o dicitura speciale (Recupero o Codici)
-        let orariText = record.tipo || (record.e ? `${record.e} > ${record.u}` : 'Riposo');
+        // 5. Testo orari o dicitura speciale
+        // Se è un turno concordato, vogliamo vedere l'orario (es. 14:00 > 20:00)
+        // Se è un altro tipo (Ferie, Malattia), vediamo la scritta (es. 01-FERIE)
+        let orariText = "";
+        if (record.tipo && record.tipo !== "00-TURNO CONCORDATO" && record.tipo !== "STRAORD. PAUSA RIDOTTA") {
+            orariText = record.tipo;
+        } else {
+            orariText = record.e ? `${record.e} > ${record.u}${simboloPausa}` : 'Riposo';
+        }
         
         return `
         <div onclick="apriModifica(${index})" class="${coloreBordo} p-4 rounded-2xl shadow-sm flex justify-between items-center border-l-8 cursor-pointer active:scale-95 transition-all mb-2">
@@ -680,7 +715,6 @@
         </div>`;
     }).join('');
 }
-
          function renderPrint() {
     const tbody = document.getElementById('print-rows');
     tbody.innerHTML = "";
@@ -688,22 +722,27 @@
     let totaleOrd = 0, totaleStr = 0, totaleAss = 0;
     
     datiMese.forEach(record => {
-        totaleOrd += record.ord;
-        totaleStr += record.str;
-        totaleAss += record.ass;
+        totaleOrd += (record.ord || 0);
+        totaleStr += (record.str || 0);
+        
+        // 1. CALCOLO ASSENZA (Standard + Permesso Orario)
+        let minutiAssenzaEffettivi = (record.ass || 0);
+        if (minutiAssenzaEffettivi === 0 && record.tipo && record.tipo.includes("PERMESSO ORARIO")) {
+            minutiAssenzaEffettivi = record.pausa > 60 ? record.pausa - 60 : 0;
+        }
+        totaleAss += minutiAssenzaEffettivi;
         
         const classeFestivo = record.isFestivo ? 'class="festivo-text"' : '';
         
-        // LOGICA PAUSA DINAMICA (IDENTICA AL PDF)
+        // 2. LOGICA PAUSA DINAMICA (Corretta per mostrare il permesso)
         let inizioPausa = "";
         let finePausa = "";
         
-        if (record.e && !record.isFestivo) {
-            // Se pausa = 60 min -> 12:00 (720 min)
-            // Se pausa = 30 min -> 12:30 (720 + 30 min di slittamento)
-            const durataPausa = record.pausa || 60;
-            const slittamento = 60 - durataPausa;
-            inizioPausa = formatMinuti(720 + slittamento);
+        if (record.e && !record.isFestivo && record.pausa > 0) {
+            // Se la pausa è 60, inizioPausa = 12:00 (720 min)
+            // Se la pausa è 120, inizioPausa = 11:00 (660 min)
+            // Sottraiamo l'intera durata della pausa dalle 13:00 (780 min)
+            inizioPausa = formatMinuti(780 - record.pausa); 
             finePausa = "13:00";
         }
         
@@ -716,7 +755,7 @@
             <td>${record.u || ''}</td>
             <td>${record.ord > 0 ? formatMinuti(record.ord) : ''}</td>
             <td>${record.str > 0 ? formatMinuti(record.str) : ''}</td>
-            <td>${record.ass > 0 ? formatMinuti(record.ass) : ''}</td>
+            <td>${minutiAssenzaEffettivi > 0 ? formatMinuti(minutiAssenzaEffettivi) : ''}</td>
             <td style="text-align: left; padding-left: 5px; font-size: 7pt;">${record.tipo || ''}</td>
         </tr>`;
     });
@@ -746,85 +785,90 @@
          function salvaGiorno() {
     const record = datiMese[indexCorrente];
     const assenzaTotale = document.getElementById('assenzaTotale').checked;
-    const tipoScelto = document.getElementById('editTipo').value; // Il valore del menu a tendina
+    const tipoScelto = document.getElementById('editTipo').value; 
     const entrata = document.getElementById('editEntrata').value;
     const uscita = document.getElementById('editUscita').value;
-    const pausa = parseInt(document.getElementById('editPausa').value) || 0;
+    const pausaImpostata = parseInt(document.getElementById('editPausa').value) || 0;
     
     let ord = 0, str = 0, ass = 0, nota = tipoScelto;
-    
-    // --- BLOCCO DI SICUREZZA ---
-    // Se non è assenza totale e non è weekend/festivo
-    if (!assenzaTotale && !record.isFestivo) {
-        let minE = parseMin(entrata);
-        let minU = parseMin(uscita);
-        if (minU < minE) minU += 1440;
-        let minutiLavorati = (minU - minE) - pausa;
+    let pausaDaSalvare = 0;
 
-        // Se le ore sono meno di 8 (480 min) e NON hai scelto un codice assenza
-        if (minutiLavorati < 480 && !tipoScelto) {
-            alert("⚠️ ATTENZIONE: Le ore lavorate sono meno di 8. Devi selezionare un codice assenza (Ferie, Permesso, ecc.) o completare l'orario.");
-            return; // Blocca il salvataggio
-        }
-    }
-    // ---------------------------
-
-    if(assenzaTotale) {
-        ass = 480;
-        ord = 0;
-        str = 0;
-        // Obbligo codice anche per assenza totale
-        if (!tipoScelto) {
-            alert("⚠️ Seleziona il tipo di assenza (es. FERIE o MALATTIA)");
-            return;
-        }
-    } else if(entrata && uscita) {
+    if (!assenzaTotale && entrata && uscita) {
         let minE = parseMin(entrata);
         let minU = parseMin(uscita);
         if (minU < minE) minU += 1440; 
-        let minutiLavorati = (minU - minE) - pausa;
-        
-        if(record.isFestivo) {
-            ord = 0;
-            str = minutiLavorati;
-            ass = (tipoScelto === "76-FESTIVITA") ? 480 : 0;
-        } else {
-            // Logica automatica recupero (solo se non c'è già un codice manuale)
-            if (!tipoScelto && minU < 1020 && minutiLavorati >= 480) {
-                nota = "Uscita Anticipata in Recupero Pausa Pranzo";
-            } else if (!tipoScelto && pausa < 60 && minutiLavorati > 480) {
-                nota = "STRAORD. PAUSA RIDOTTA";
-            }
 
-            if(minutiLavorati >= 480) {
-                ord = 480;
-                str = minutiLavorati - 480;
-                ass = 0;
-            } else {
-                ord = minutiLavorati;
-                str = 0;
-                ass = 480 - minutiLavorati;
+        // Calcolo Pausa: se copre la fascia 12-13
+        if (!record.isFestivo && minE <= 720 && minU >= 780) {
+            pausaDaSalvare = pausaImpostata;
+        }
+
+        let minutiLavorati = (minU - minE) - pausaDaSalvare;
+        if (minutiLavorati < 0) minutiLavorati = 0;
+
+        // --- NUOVA LOGICA: Calcolo Permesso Orario (eccedenza pausa oltre i 60 min) ---
+        let minutiPermesso = 0;
+        if (pausaDaSalvare > 60) {
+            minutiPermesso = pausaDaSalvare - 60;
+        }
+
+        // --- LOGICA AUTOMATICA NOTE ---
+        if (!record.isFestivo && !tipoScelto) {
+            if (minutiPermesso > 0) {
+                // Se c'è un'uscita lunga, scrivi quanto permesso è stato usato
+                nota = `PERMESSO ORARIO ${formatMin(minutiPermesso)}`;
+            }
+            else if (pausaDaSalvare < 60 && minutiLavorati > 480 && pausaDaSalvare > 0) {
+                nota = "STRAORD. PAUSA RIDOTTA";
+            } 
+            else if (minU < 1020 && (minutiLavorati + minutiPermesso) >= 480) {
+                nota = "Uscita Anticipata in Recupero Pausa Pranzo";
             }
         }
+
+        // Controllo 8 ore (Modificato per includere il permesso nel conteggio)
+        if (!record.isFestivo && (minutiLavorati + minutiPermesso) < 480 && nota !== "00-TURNO CONCORDATO" && !tipoScelto) {
+            alert("⚠️ Ore insufficienti. Seleziona un codice assenza o '00-TURNO CONCORDATO'.");
+            return; 
+        }
+
+        // Riparto ore
+        if(record.isFestivo) {
+            ord = 0; 
+            str = minutiLavorati;
+            ass = (tipoScelto === "76-FESTIVITA") ? 480 : 0;
+            if (!tipoScelto) nota = ""; 
+        } else {
+            // Se c'è permesso, le ore ordinarie sono Lavoro + Permesso (fino a 480)
+            let totaleOrdinario = minutiLavorati + minutiPermesso;
+            if(totaleOrdinario >= 480) {
+                ord = 480; 
+                str = totaleOrdinario - 480; 
+                ass = 0;
+            } else {
+                ord = totaleOrdinario; 
+                str = 0; 
+                ass = 480 - totaleOrdinario;
+            }
+        }
+    } else if (assenzaTotale) {
+        ass = 480;
+        if (!tipoScelto) { alert("⚠️ Seleziona tipo assenza"); return; }
     }
     
-    // Aggiornamento dati e salvataggio
     datiMese[indexCorrente] = {
         ...record,
         e: assenzaTotale ? '' : entrata,
         u: assenzaTotale ? '' : uscita,
-        pausa: pausa,
-        ord: ord,
-        str: str,
-        ass: ass,
-        tipo: nota
+        pausa: pausaDaSalvare,
+        ord: ord, str: str, ass: ass, tipo: nota
     };
     
     const mese = document.getElementById('mese').value;
     const anno = document.getElementById('anno').value;
     localStorage.setItem(`esa_v4_${anno}_${mese}`, JSON.stringify(datiMese));
     
-    mostraNotificaBackup(); // Feedback visivo che abbiamo aggiunto
+    
     aggiornaUI();
     vaiAPagina(2);
 }
@@ -1045,157 +1089,198 @@
         }
 
         // =================== REPORT MENSILI ===================
-        function caricaReport() {
-            const mese = document.getElementById('reportMese').value;
-            const anno = document.getElementById('reportAnno').value;
-            const key = `esa_v4_${anno}_${mese}`;
-            
-            const datiSalvati = localStorage.getItem(key);
-            if(!datiSalvati) {
-                alert("Nessun dato disponibile per questo mese.");
-                return;
-            }
-            
-            const dati = JSON.parse(datiSalvati);
-            const profilo = JSON.parse(localStorage.getItem('esa_v4_profile'));
-            
-            // Calcola totali
-            let totaleOrd = 0, totaleStr = 0, totaleAss = 0, giorniLavorativi = 0;
-            const assenzePerTipo = {};
-            
-            dati.forEach(record => {
-                totaleOrd += record.ord;
-                totaleStr += record.str;
-                totaleAss += record.ass;
-                
-                if(!record.isFestivo) giorniLavorativi++;
-                
-                if(record.tipo && record.tipo !== '') {
-                    if(!assenzePerTipo[record.tipo]) {
-                        assenzePerTipo[record.tipo] = 0;
-                    }
-                    assenzePerTipo[record.tipo] += record.ass;
-                }
-            });
-            
-            // Aggiorna UI
-            document.getElementById('totOrd').textContent = formatMinuti(totaleOrd);
-            document.getElementById('totStr').textContent = formatMinuti(totaleStr);
-            document.getElementById('totAss').textContent = formatMinuti(totaleAss);
-            document.getElementById('totGiorni').textContent = giorniLavorativi;
-            
-            // Aggiorna dettagli assenze
-            const containerAssenze = document.getElementById('dettagliAssenze');
-            containerAssenze.innerHTML = '';
-            
-            if(Object.keys(assenzePerTipo).length === 0) {
-                containerAssenze.innerHTML = '<p class="text-slate-500">Nessuna assenza registrata</p>';
-            } else {
-                Object.entries(assenzePerTipo).forEach(([tipo, minuti]) => {
-                    if(minuti > 0) {
-                        const div = document.createElement('div');
-                        div.className = 'flex justify-between items-center bg-white p-3 rounded-lg';
-                        div.innerHTML = `
-                            <span class="font-medium">${tipo}</span>
-                            <span class="font-bold text-orange-600">${formatMinuti(minuti)}</span>
-                        `;
-                        containerAssenze.appendChild(div);
-                    }
-                });
-            }
-            
-            // Mostra contenuto report
-            document.getElementById('reportContenuto').classList.remove('hidden');
-        }
-
-        // =================== GENERAZIONE PDF ===================
-        function generaPDF() {
+function caricaReport() {
+    const mese = document.getElementById('reportMese').value;
+    const anno = document.getElementById('reportAnno').value;
+    const key = `esa_v4_${anno}_${mese}`;
+    
+    const datiSalvati = localStorage.getItem(key);
+    if(!datiSalvati) {
+        alert("Nessun dato disponibile per questo mese.");
+        return;
+    }
+    
+    const dati = JSON.parse(datiSalvati);
     const profilo = JSON.parse(localStorage.getItem('esa_v4_profile'));
-    const meseIdx = document.getElementById('mese').value;
-    const meseNome = document.getElementById('mese').options[meseIdx].text;
+    
+    // Calcola totali
+    let totaleOrd = 0, totaleStr = 0, totaleAss = 0, giorniLavorativi = 0;
+    const assenzePerTipo = {};
+    
+    dati.forEach(record => {
+        totaleOrd += (record.ord || 0);
+        totaleStr += (record.str || 0);
+        
+        // --- LOGICA SPECIALE PER ASSENZE E PERMESSI ---
+        let minutiAssenzaGiorno = (record.ass || 0);
+        let tipoNota = record.tipo || '';
+
+        // Se non c'è assenza ufficiale ma c'è un permesso orario calcolato nella pausa
+        if (minutiAssenzaGiorno === 0 && tipoNota.includes("PERMESSO ORARIO")) {
+            minutiAssenzaGiorno = record.pausa > 60 ? record.pausa - 60 : 0;
+            // Assicuriamoci che nel riepilogo venga raggruppato sotto "PERMESSO ORARIO"
+            tipoNota = "PERMESSO ORARIO";
+        }
+        
+        totaleAss += minutiAssenzaGiorno;
+        
+        if(!record.isFestivo) giorniLavorativi++;
+        
+        // Raggruppamento per il widget dei dettagli
+        if(minutiAssenzaGiorno > 0 && tipoNota !== '') {
+            if(!assenzePerTipo[tipoNota]) {
+                assenzePerTipo[tipoNota] = 0;
+            }
+            assenzePerTipo[tipoNota] += minutiAssenzaGiorno;
+        }
+    });
+    
+    // Aggiorna UI (Quadratini totali)
+    document.getElementById('totOrd').textContent = formatMinuti(totaleOrd);
+    document.getElementById('totStr').textContent = formatMinuti(totaleStr);
+    document.getElementById('totAss').textContent = formatMinuti(totaleAss); // Qui apparirà 19:20
+    document.getElementById('totGiorni').textContent = giorniLavorativi;
+    
+    // Aggiorna dettagli assenze (Elenco in basso)
+    const containerAssenze = document.getElementById('dettagliAssenze');
+    containerAssenze.innerHTML = '';
+    
+    if(Object.keys(assenzePerTipo).length === 0) {
+        containerAssenze.innerHTML = '<p class="text-slate-500 text-center">Nessuna assenza registrata</p>';
+    } else {
+        Object.entries(assenzePerTipo).forEach(([tipo, minuti]) => {
+            if(minuti > 0) {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center bg-white p-3 rounded-lg border border-slate-100 shadow-sm mb-2';
+                div.innerHTML = `
+                    <span class="font-medium text-slate-700">${tipo}</span>
+                    <span class="font-bold text-orange-600">${formatMinuti(minuti)}</span>
+                `;
+                containerAssenze.appendChild(div);
+            }
+        });
+    }
+    
+    // Mostra contenuto report
+    document.getElementById('reportContenuto').classList.remove('hidden');
+}
+
+        async function generaPDF() {
+    const profilo = JSON.parse(localStorage.getItem('esa_v4_profile'));
+    const selectMese = document.getElementById('mese');
+    const meseNome = selectMese.options[selectMese.selectedIndex].text;
     const anno = document.getElementById('anno').value;
     
-    const doc = new jspdf.jsPDF('p', 'mm', 'a4');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+
+    // --- LOGO DISATTIVATO PER TEST LOCALE ---
+    const imgLogo = document.getElementById('logoPerPDF');
+    if (imgLogo && imgLogo.complete && imgLogo.naturalWidth !== 0) {
+        doc.addImage(imgLogo, 'PNG', 15, 10, 30, 15);
+    }
+  
+
+    // --- 2. INTESTAZIONE STILE ISTITUZIONALE ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("FOGLIO DI PRESENZA", 105, 22, { align: "center" });
     
-    // Header
-    doc.setFontSize(18);
-    doc.text('ESA - FOGLIO PRESENZE', 105, 20, { align: 'center' });
     doc.setFontSize(10);
-    doc.text(`Dipendente: ${profilo.nome.toUpperCase()} | Targa: ${profilo.targa.toUpperCase()}`, 20, 30);
-    doc.text(`Mese: ${meseNome} ${anno}`, 20, 35);
-    
-    // Tabella con calcolo pausa dinamica
+    doc.setFont("helvetica", "normal");
+    doc.text(`Dipendente: ${profilo.nome.toUpperCase()}`, 15, 35);
+    doc.text(`Mese di riferimento: ${meseNome} ${anno}`, 120, 35);
+    doc.line(15, 37, 195, 37);
+
+    // --- 3. PREPARAZIONE DATI TABELLA ---
     const rows = datiMese.map(r => {
         let inizioPausa = "";
         let finePausa = "";
-        
-        // Se c'è un orario di entrata e non è un weekend/festivo
-        if (r.e && !r.isFestivo) {
-            // Se la pausa è 60 min, inizia alle 12:00 (720 min)
-            // Se la pausa è 30 min, inizia alle 12:30 (720 + 30 min di slittamento)
-            const durataPausa = r.pausa || 60;
-            const slittamento = 60 - durataPausa;
-            inizioPausa = formatMinuti(720 + slittamento);
+        if (r.e && !r.isFestivo && r.pausa > 0) {
+            inizioPausa = formatMinuti(780 - r.pausa);
             finePausa = "13:00";
         }
-
+        let minutiAssenzaEffettivi = (r.ass || 0);
+        if (minutiAssenzaEffettivi === 0 && r.tipo && r.tipo.includes("PERMESSO ORARIO")) {
+            minutiAssenzaEffettivi = r.pausa > 60 ? r.pausa - 60 : 0;
+        }
         return [
             `${r.dw} ${r.giorno}`,
             r.e || '',
             inizioPausa,
             finePausa,
             r.u || '',
-            formatMinuti(r.ord),
-            formatMinuti(r.str),
-            formatMinuti(r.ass),
+            r.ord > 0 ? formatMinuti(r.ord) : '',
+            r.str > 0 ? formatMinuti(r.str) : '',
+            minutiAssenzaEffettivi > 0 ? formatMinuti(minutiAssenzaEffettivi) : '',
             r.tipo || ''
         ];
     });
-    
-    doc.autoTable({
-        head: [['Giorno', 'Entrata', 'Inizio P.', 'Fine P.', 'Uscita', 'Ord.', 'Str.', 'Ass.', 'Codice/Note']],
-        body: rows,
-        startY: 40,
-        styles: { fontSize: 7, cellPadding: 1.5 },
-        headStyles: { fillColor: [200, 200, 200], textColor: 0 }
-    });
-    
-    // Riepilogo Finali
-    let fY = doc.lastAutoTable.finalY + 10;
-    const tOrd = datiMese.reduce((s, r) => s + r.ord, 0);
-    const tStr = datiMese.reduce((s, r) => s + r.str, 0);
-    const tAss = datiMese.reduce((s, r) => s + r.ass, 0);
 
-    const riepilogoCodici = {};
-    datiMese.forEach(r => {
-        if (r.tipo && r.ass > 0) {
-            riepilogoCodici[r.tipo] = (riepilogoCodici[r.tipo] || 0) + r.ass;
+    // --- 4. GENERAZIONE TABELLA ---
+    doc.autoTable({
+        head: [['GIORNO', 'ENTRATA', 'P. PRANZO', 'FINE P.', 'USCITA', 'ORD.', 'STR.', 'ASS.', 'NOTE']],
+        body: rows,
+        startY: 42,
+        theme: 'grid',
+        headStyles: {
+            fillColor: [240, 240, 240],
+            textColor: [0, 0, 0],
+            fontSize: 8,
+            fontStyle: 'bold',
+            halign: 'center',
+            lineWidth: 0.1,
+            lineColor: [0, 0, 0]
+        },
+        styles: {
+            fontSize: 7,
+            cellPadding: 1.5,
+            lineColor: [0, 0, 0],
+            lineWidth: 0.1,
+            valign: 'middle'
+        },
+        columnStyles: {
+            0: { cellWidth: 22 },
+            5: { halign: 'center' },
+            6: { halign: 'center' },
+            7: { halign: 'center' }
+        },
+        didParseCell: function(data) {
+            const dayText = data.row.cells[0].text[0];
+            if (dayText && (dayText.includes("SAB") || dayText.includes("DOM"))) {
+                data.cell.styles.fillColor = [245, 245, 245];
+            }
         }
     });
 
-    doc.setFont(undefined, 'bold');
-    doc.text(`TOTALI MENSILI:`, 20, fY);
-    doc.setFont(undefined, 'normal');
-    doc.text(`Ordinarie: ${formatMinuti(tOrd)} | Straordinarie: ${formatMinuti(tStr)} | Assenze: ${formatMinuti(tAss)}`, 20, fY + 5);
+    // --- 5. TOTALI E FIRME ---
+    let finalY = doc.lastAutoTable.finalY + 10;
+    const tOrd = datiMese.reduce((s, r) => s + (r.ord || 0), 0);
+    const tStr = datiMese.reduce((s, r) => s + (r.str || 0), 0);
+    const tAss = datiMese.reduce((s, r) => {
+        let assenzaGiorno = (r.ass || 0);
+        if (assenzaGiorno === 0 && r.tipo && r.tipo.includes("PERMESSO ORARIO")) {
+            assenzaGiorno = r.pausa > 60 ? r.pausa - 60 : 0;
+        }
+        return s + assenzaGiorno;
+    }, 0);
 
-    // Dettaglio assenze
-    fY += 15;
-    doc.setFont(undefined, 'bold');
-    doc.text(`RIEPILOGO PER CODICE:`, 20, fY);
-    doc.setFont(undefined, 'normal');
-    let offset = 6;
-    Object.keys(riepilogoCodici).forEach((cod, i) => {
-        doc.text(`- ${cod}: ${formatMinuti(riepilogoCodici[cod])}`, 25, fY + offset + (i * 5));
-    });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text(`TOTALI MENSILI:`, 15, finalY);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Ore Ordinarie: ${formatMinuti(tOrd)}   |   Ore Straordinarie: ${formatMinuti(tStr)}   |   Ore Assenza: ${formatMinuti(tAss)}`, 15, finalY + 5);
 
-    // Firme
-    const firmeY = 270;
-    doc.line(20, firmeY, 80, firmeY);
-    doc.line(130, firmeY, 190, firmeY);
-    doc.text('Firma Dipendente', 50, firmeY + 5, { align: 'center' });
-    doc.text('Firma Responsabile', 160, firmeY + 5, { align: 'center' });
-    
-    doc.save(`ESA_Report_${profilo.nome}_${meseNome}.pdf`);
+    finalY += 25;
+    doc.line(15, finalY, 75, finalY);
+    doc.text("Firma del Dipendente", 15, finalY + 5);
+    doc.line(135, finalY, 195, finalY);
+    doc.text("Firma per Approvazione", 135, finalY + 5);
+
+    if (typeof mostraNotificaBackup === "function") mostraNotificaBackup("📄 PDF Generato");
+
+    doc.output('dataurlnewwindow');
+    doc.save(`ESA_Report_${profilo.nome.replace(/\s+/g, '_')}_${meseNome}.pdf`);
 }
         // =================== GESTIONE DATI ===================
         function resetMeseCorrente() {
@@ -1337,6 +1422,32 @@ function caricaMeseDinamico() {
 // Collega i menu a tendina alla funzione di caricamento
 document.getElementById('mese').addEventListener('change', caricaMeseDinamico);
 document.getElementById('anno').addEventListener('change', caricaMeseDinamico);
+
+
+function calcolaFestiviItalia(anno) {
+    const festivi = [
+        `${anno}-01-01`, `${anno}-01-06`, `${anno}-04-25`, `${anno}-05-01`,
+        `${anno}-06-02`, `${anno}-08-15`, `${anno}-11-01`, `${anno}-12-08`,
+        `${anno}-12-25`, `${anno}-12-26`
+    ];
+    // Calcolo Pasquetta (semplificato)
+    const a = anno % 19, b = anno % 4, c = anno % 7, d = (19 * a + 24) % 30, e = (2 * b + 4 * c + 6 * d + 5) % 7;
+    const pasquetta = new Date(anno, 2, 22 + d + e + 1);
+    festivi.push(`${pasquetta.getFullYear()}-${(pasquetta.getMonth()+1).toString().padStart(2, '0')}-${pasquetta.getDate().toString().padStart(2, '0')}`);
+    return festivi;
+}
+// Funzione di utilità per trasformare i minuti in formato HH:MM
+function formatMin(m) {
+    if (m === 0 || isNaN(m)) return "00:00";
+    let h = Math.floor(Math.abs(m) / 60);
+    let min = Math.abs(m) % 60;
+    return `${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+}
+function parseMin(t) {
+    if (!t) return 0;
+    const [h, m] = t.split(':');
+    return parseInt(h) * 60 + parseInt(m);
+}
 
     </script>
 </body>
