@@ -72,9 +72,41 @@
             visibility: visible;
             opacity: 1;
         }
+
+#toast-backup {
+    visibility: hidden;
+    min-width: 200px;
+    background-color: #10b981; /* Verde smeraldo */
+    color: #fff;
+    text-align: center;
+    border-radius: 12px;
+    padding: 10px;
+    position: fixed;
+    z-index: 1000;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+#toast-backup.show {
+    visibility: visible;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+@keyframes fadein { from {top: 0; opacity: 0;} to {top: 20px; opacity: 1;} }
+@keyframes fadeout { from {top: 20px; opacity: 1;} to {top: 0; opacity: 0;} }
+
+
+
+
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
+
+    <div id="toast-backup">✅ Backup Automatico Salvato</div>
 
     <div class="no-print">
         <!-- Pagina 1: Configurazione -->
@@ -784,6 +816,8 @@
     const mese = document.getElementById('mese').value;
     const anno = document.getElementById('anno').value;
     localStorage.setItem(`esa_v4_${anno}_${mese}`, JSON.stringify(datiMese));
+
+    mostraNotificaBackup();
     
 // LOGICA BACKUP AUTOMATICO: Chiedi ogni 5 modifiche o semplicemente offri il tasto
 console.log("Dati salvati localmente.");
@@ -1249,6 +1283,14 @@ console.log("Dati salvati localmente.");
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
 }
+
+function mostraNotificaBackup(messaggio = "✅ Backup Automatico Salvato") {
+    const toast = document.getElementById("toast-backup");
+    toast.innerText = messaggio;
+    toast.className = "show";
+    setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+}
+
     
     function importaBackup(event) {
     const file = event.target.files[0];
@@ -1269,6 +1311,31 @@ console.log("Dati salvati localmente.");
     };
     reader.readAsText(file);
 }
+
+// Funzione per gestire il cambio mese/anno in modo automatico
+function caricaMeseDinamico() {
+    const mese = document.getElementById('mese').value;
+    const anno = document.getElementById('anno').value;
+    const chiave = `esa_v4_${anno}_${mese}`;
+    const salvati = localStorage.getItem(chiave);
+
+    if (salvati) {
+        datiMese = JSON.parse(salvati);
+    } else {
+        // Genera e salva automaticamente se il mese è nuovo
+        datiMese = generaMese(mese, anno);
+    }
+    
+    // Forza il rinfresco della lista a video
+    aggiornaUI();
+
+    mostraNotificaBackup("📅 Mese Caricato e Salvato");
+}
+
+// Collega i menu a tendina alla funzione di caricamento
+document.getElementById('mese').addEventListener('change', caricaMeseDinamico);
+document.getElementById('anno').addEventListener('change', caricaMeseDinamico);
+
     </script>
 </body>
 </html>
