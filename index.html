@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESA - Smart Tracker V4.1</title>
+    <title>ESA - Smart Tracker V4.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <style>
         .page { display: none; }
         .page.active { display: block; }
@@ -17,13 +19,13 @@
             
             table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; border: 1.5pt solid rgb(10, 10, 10); }
             th, td { 
-    border: 1px solid #030303 !important; /* Colore grigio per i bordi */
-    padding: 1px 2px;                 /* Riduce lo spazio interno */
-    font-size: 8pt; 
-    text-align: center; 
-    height: 21px;                      /* Riduce l'altezza della cella */
-    line-height: 1;
-}
+                border: 1px solid #030303 !important;
+                padding: 1px 2px;
+                font-size: 8pt; 
+                text-align: center; 
+                height: 21px;
+                line-height: 1;
+            }
             th { 
                 background-color: #f0f0f0 !important; 
                 font-weight: bold; 
@@ -41,11 +43,41 @@
             .festivo-text { color: #e11d48 !important; font-weight: bold !important; background-color: #fff1f2 !important; }
             .total-row { background-color: #f8fafc !important; font-weight: bold; border-top: 1.5pt solid black !important; }
         }
+        
+        /* Stili personalizzati */
+        .input-error { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+        .input-success { border-color: #10b981 !important; }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
 
     <div class="no-print">
+        <!-- Pagina 1: Configurazione -->
         <div id="page1" class="page active max-w-md mx-auto p-6">
             <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-blue-600">
                 <div class="flex justify-center mb-4">
@@ -53,8 +85,14 @@
                 </div>
                 <h1 class="text-xl font-black text-center text-slate-800 mb-6">CONFIGURAZIONE PRESENZE</h1>
                 <div class="space-y-4">
-                    <input id="nome" type="text" placeholder="Nome e Cognome" class="w-full p-4 border rounded-2xl shadow-sm">
-                    <input id="targa" type="text" placeholder="Targa Auto" class="w-full p-4 border rounded-2xl shadow-sm">
+                    <div>
+                        <input id="nome" type="text" placeholder="Nome e Cognome *" class="w-full p-4 border rounded-2xl shadow-sm">
+                        <p class="text-xs text-slate-500 mt-1 ml-2">Es: Mario Rossi</p>
+                    </div>
+                    <div>
+                        <input id="targa" type="text" placeholder="Targa Auto *" class="w-full p-4 border rounded-2xl shadow-sm uppercase">
+                        <p class="text-xs text-slate-500 mt-1 ml-2">Formato italiano: AA 000 AA</p>
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
                         <select id="mese" class="p-4 border rounded-2xl bg-white shadow-sm">
                             <option value="0">Gennaio</option><option value="1">Febbraio</option><option value="2">Marzo</option>
@@ -62,32 +100,47 @@
                             <option value="6">Luglio</option><option value="7">Agosto</option><option value="8">Settembre</option>
                             <option value="9">Ottobre</option><option value="10">Novembre</option><option value="11">Dicembre</option>
                         </select>
-                        <input id="anno" type="number" value="2026" class="p-4 border rounded-2xl shadow-sm">
+                        <input id="anno" type="number" min="2000" max="2100" value="2026" class="p-4 border rounded-2xl shadow-sm">
                     </div>
                     <button onclick="configurazioneIniziale()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all uppercase">Carica Calendario</button>
+                    
+                    <div class="pt-4 border-t border-slate-200">
+                        <button onclick="vaiAPagina(5)" class="w-full bg-slate-200 text-slate-800 py-3 rounded-2xl font-bold hover:bg-slate-300 transition-all mb-2">📊 Report Mensili</button>
+                        <button onclick="vaiAPagina(6)" class="w-full bg-emerald-600 text-white py-3 rounded-2xl font-bold shadow hover:bg-emerald-700 transition-all">📁 Gestione Dati</button>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Pagina 2: Calendario Mese -->
         <div id="page2" class="page max-w-md mx-auto p-4 pb-24">
             <div class="flex justify-between items-center mb-6 px-2">
                 <div>
                     <h2 id="titoloPagina2" class="font-black text-2xl text-slate-800"></h2>
                     <p id="sottotitoloNome" class="text-sm text-slate-500 font-medium"></p>
                 </div>
-                <button onclick="vaiAPagina(1)" class="bg-white border-2 border-slate-200 p-2 rounded-xl hover:bg-slate-50">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="vaiAPagina(1)" class="bg-white border-2 border-slate-200 p-2 rounded-xl hover:bg-slate-50" title="Impostazioni">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div id="listaGiorni" class="space-y-3"></div>
-            <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-lg border-t border-slate-200">
-                <button onclick="window.print()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-black transition-all">STAMPA FOGLIO PRESENZE</button>
+            <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-lg border-t border-slate-200 flex gap-2">
+                <button onclick="generaPDF()" class="flex-1 bg-slate-800 text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    PDF
+                </button>
+                <button onclick="window.print()" class="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-black transition-all">STAMPA</button>
             </div>
         </div>
 
+        <!-- Pagina 3: Modifica Giorno -->
         <div id="page3" class="page max-w-md mx-auto p-6">
             <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-orange-500">
                 <h2 id="giornoModifica" class="text-2xl font-black mb-6 text-slate-800"></h2>
@@ -135,8 +188,129 @@
                 </div>
             </div>
         </div>
+
+        <!-- Pagina 5: Report Mensili -->
+        <div id="page5" class="page max-w-md mx-auto p-6">
+            <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-purple-600">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black text-slate-800">📊 REPORT MENSILI</h2>
+                    <button onclick="vaiAPagina(1)" class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <select id="reportMese" class="p-4 border rounded-2xl bg-white shadow-sm">
+                            <option value="0">Gennaio</option><option value="1">Febbraio</option><option value="2">Marzo</option>
+                            <option value="3">Aprile</option><option value="4">Maggio</option><option value="5">Giugno</option>
+                            <option value="6">Luglio</option><option value="7">Agosto</option value="8">Settembre</option>
+                            <option value="9">Ottobre</option><option value="10">Novembre</option><option value="11">Dicembre</option>
+                        </select>
+                        <input id="reportAnno" type="number" min="2000" max="2100" value="2026" class="p-4 border rounded-2xl shadow-sm">
+                    </div>
+                    
+                    <button onclick="caricaReport()" class="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-purple-700 transition-all">
+                        Genera Report
+                    </button>
+                    
+                    <div id="reportContenuto" class="mt-6 space-y-4 hidden">
+                        <div class="bg-slate-50 rounded-2xl p-4">
+                            <h3 class="font-bold text-slate-800 mb-3">📈 Statistiche Mese</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-white p-3 rounded-xl shadow-sm">
+                                    <p class="text-xs text-slate-500">Ore Ordinarie</p>
+                                    <p id="totOrd" class="text-2xl font-black text-blue-600">0:00</p>
+                                </div>
+                                <div class="bg-white p-3 rounded-xl shadow-sm">
+                                    <p class="text-xs text-slate-500">Ore Straordinarie</p>
+                                    <p id="totStr" class="text-2xl font-black text-green-600">0:00</p>
+                                </div>
+                                <div class="bg-white p-3 rounded-xl shadow-sm">
+                                    <p class="text-xs text-slate-500">Ore Assenze</p>
+                                    <p id="totAss" class="text-2xl font-black text-orange-600">0:00</p>
+                                </div>
+                                <div class="bg-white p-3 rounded-xl shadow-sm">
+                                    <p class="text-xs text-slate-500">Giorni Lavorativi</p>
+                                    <p id="totGiorni" class="text-2xl font-black text-purple-600">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-slate-50 rounded-2xl p-4">
+                            <h3 class="font-bold text-slate-800 mb-3">📋 Dettagli Assenze</h3>
+                            <div id="dettagliAssenze" class="space-y-2 text-sm">
+                                <!-- Dettagli verranno inseriti qui -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagina 6: Gestione Dati -->
+        <div id="page6" class="page max-w-md mx-auto p-6">
+            <div class="bg-white rounded-3xl shadow-xl p-6 border-t-8 border-emerald-600">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black text-slate-800">📁 GESTIONE DATI</h2>
+                    <button onclick="vaiAPagina(1)" class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-slate-50 rounded-2xl p-4">
+                        <h3 class="font-bold text-slate-800 mb-3">💾 Backup Dati</h3>
+                        <p class="text-sm text-slate-600 mb-4">Esporta tutti i dati salvati nel browser in formato CSV</p>
+                        <button onclick="esportaTuttiDatiCSV()" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all mb-2">
+                            📥 Esporta Tutti i Dati (CSV)
+                        </button>
+                        <button onclick="esportaDatiJSON()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all">
+                            📥 Esporta Tutti i Dati (JSON)
+                        </button>
+                    </div>
+                    
+                    <div class="bg-slate-50 rounded-2xl p-4">
+                        <h3 class="font-bold text-slate-800 mb-3">📤 Importa Dati</h3>
+                        <p class="text-sm text-slate-600 mb-4">Importa dati da file CSV o JSON</p>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Seleziona file JSON o CSV</label>
+                                <input type="file" id="fileImport" accept=".json,.csv" class="w-full p-3 border rounded-xl bg-white">
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="importaDati()" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-bold hover:bg-black transition-all">
+                                    Importa Dati
+                                </button>
+                                <button onclick="document.getElementById('fileImport').value=''" class="flex-1 bg-slate-200 text-slate-800 py-3 rounded-xl font-bold hover:bg-slate-300 transition-all">
+                                    Cancella
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-red-50 rounded-2xl p-4 border border-red-200">
+                        <h3 class="font-bold text-red-800 mb-3">⚠️ Zona Pericolosa</h3>
+                        <p class="text-sm text-red-600 mb-4">Queste operazioni cancellano definitivamente i dati</p>
+                        <div class="flex gap-2">
+                            <button onclick="resetMeseCorrente()" class="flex-1 bg-red-100 text-red-700 py-3 rounded-xl font-bold hover:bg-red-200 transition-all">
+                                Reset Mese Corrente
+                            </button>
+                            <button onclick="eliminaTuttiDati()" class="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-all">
+                                Elimina Tutti i Dati
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Area di Stampa -->
     <div id="print-area" class="hidden print-only p-4 bg-white">
         <div class="header-container">
             <div>
@@ -196,10 +370,113 @@
     </div>
 
     <script>
+        // =================== VARIABILI GLOBALI ===================
         let datiMese = [];
         let indexCorrente = -1;
-        const festivi = ["1-0","6-0","25-3","1-4","2-5","15-7","1-10","8-11","25-11","26-11"];
+        const { jsPDF } = window.jspdf;
 
+        // =================== FUNZIONI FESTIVI ITALIANI ===================
+        function calcolaFestiviItalia(anno) {
+            const festivi = [];
+            
+            // Festività fisse
+            festivi.push(`${anno}-01-01`); // Capodanno
+            festivi.push(`${anno}-01-06`); // Epifania
+            festivi.push(`${anno}-04-25`); // Liberazione
+            festivi.push(`${anno}-05-01`); // Festa del Lavoro
+            festivi.push(`${anno}-06-02`); // Festa della Repubblica
+            festivi.push(`${anno}-08-15`); // Ferragosto
+            festivi.push(`${anno}-11-01`); // Ognissanti
+            festivi.push(`${anno}-12-08`); // Immacolata
+            festivi.push(`${anno}-12-25`); // Natale
+            festivi.push(`${anno}-12-26`); // Santo Stefano
+            
+            // Festività specifiche Bologna (Patrono San Petronio - 4 Ottobre)
+            festivi.push(`${anno}-10-04`); // Patrono Bologna
+            
+            // Calcolo Pasqua (Algoritmo di Gauss)
+            const a = anno % 19;
+            const b = Math.floor(anno / 100);
+            const c = anno % 100;
+            const d = Math.floor(b / 4);
+            const e = b % 4;
+            const f = Math.floor((b + 8) / 25);
+            const g = Math.floor((b - f + 1) / 3);
+            const h = (19 * a + b - d - g + 15) % 30;
+            const i = Math.floor(c / 4);
+            const k = c % 4;
+            const l = (32 + 2 * e + 2 * i - h - k) % 7;
+            const m = Math.floor((a + 11 * h + 22 * l) / 451);
+            const mese = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+            const giorno = ((h + l - 7 * m + 114) % 31) + 1;
+            
+            const pasqua = new Date(anno, mese, giorno);
+            
+            // Lunedì dell'Angelo (Pasquetta)
+            const pasquetta = new Date(pasqua);
+            pasquetta.setDate(pasquetta.getDate() + 1);
+            festivi.push(pasquetta.toISOString().split('T')[0]);
+            
+            return festivi;
+        }
+
+        function isFestivo(giorno, mese, anno) {
+            const dateStr = `${anno}-${(mese + 1).toString().padStart(2, '0')}-${giorno.toString().padStart(2, '0')}`;
+            const festivi = calcolaFestiviItalia(anno);
+            const data = new Date(anno, mese, giorno);
+            const giornoSettimana = data.getDay();
+            
+            return festivi.includes(dateStr) || giornoSettimana === 0 || giornoSettimana === 6;
+        }
+
+        // =================== VALIDAZIONE INPUT ===================
+        function validaTarga(targa) {
+            // Formato italiano: AA 000 AA o AA000AA
+            const regex = /^[A-Z]{2}[0-9]{3}[A-Z]{2}$|^[A-Z]{2}\s[0-9]{3}\s[A-Z]{2}$/;
+            return regex.test(targa.toUpperCase().trim());
+        }
+
+        function validaNome(nome) {
+            return nome.trim().length >= 3 && nome.trim().length <= 50;
+        }
+
+        function validaAnno(anno) {
+            const annoNum = parseInt(anno);
+            return !isNaN(annoNum) && annoNum >= 2000 && annoNum <= 2100;
+        }
+
+        function validaOrari(entrata, uscita) {
+            if (!entrata || !uscita) return false;
+            const e = parseMin(entrata);
+            const u = parseMin(uscita);
+            return u > e && u - e <= 1440; // Max 24 ore
+        }
+
+        function mostraErrore(elemento, messaggio) {
+            elemento.classList.add('input-error');
+            elemento.classList.remove('input-success');
+            
+            // Rimuovi eventuali messaggi di errore precedenti
+            const erroreEsistente = elemento.parentElement.querySelector('.errore-msg');
+            if (erroreEsistente) erroreEsistente.remove();
+            
+            if (messaggio) {
+                const erroreDiv = document.createElement('div');
+                erroreDiv.className = 'errore-msg text-xs text-red-600 mt-1 ml-2';
+                erroreDiv.textContent = messaggio;
+                elemento.parentElement.appendChild(erroreDiv);
+            }
+        }
+
+        function mostraSuccesso(elemento) {
+            elemento.classList.remove('input-error');
+            elemento.classList.add('input-success');
+            
+            const erroreEsistente = elemento.parentElement.querySelector('.errore-msg');
+            if (erroreEsistente) erroreEsistente.remove();
+        }
+
+        // =================== FUNZIONI CORE ===================
         function vaiAPagina(n) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById('page' + n).classList.add('active');
@@ -207,139 +484,674 @@
         }
 
         function configurazioneIniziale() {
-            const n = document.getElementById('nome').value, t = document.getElementById('targa').value, m = document.getElementById('mese').value, a = document.getElementById('anno').value;
-            if(!n || !t) return alert("Dati mancanti: Inserisci Nome e Targa Auto.");
-            localStorage.setItem('esa_v4_profile', JSON.stringify({nome:n, targa:t}));
-            const key = `esa_v4_${a}_${m}`;
+            const nomeInput = document.getElementById('nome');
+            const targaInput = document.getElementById('targa');
+            const annoInput = document.getElementById('anno');
+            
+            const nome = nomeInput.value;
+            const targa = targaInput.value;
+            const mese = document.getElementById('mese').value;
+            const anno = annoInput.value;
+            
+            // Validazione
+            let valid = true;
+            
+            if (!validaNome(nome)) {
+                mostraErrore(nomeInput, "Nome deve essere tra 3 e 50 caratteri");
+                valid = false;
+            } else {
+                mostraSuccesso(nomeInput);
+            }
+            
+            if (!validaTarga(targa)) {
+                mostraErrore(targaInput, "Formato targa non valido (es: AA 123 BB)");
+                valid = false;
+            } else {
+                mostraSuccesso(targaInput);
+            }
+            
+            if (!validaAnno(anno)) {
+                mostraErrore(annoInput, "Anno deve essere tra 2000 e 2100");
+                valid = false;
+            } else {
+                mostraSuccesso(annoInput);
+            }
+            
+            if (!valid) return;
+            
+            // Salvataggio profilo
+            const profilo = {nome: nome.trim(), targa: targa.toUpperCase().replace(/\s/g, '')};
+            localStorage.setItem('esa_v4_profile', JSON.stringify(profilo));
+            
+            // Caricamento dati mese
+            const key = `esa_v4_${anno}_${mese}`;
             const salvati = localStorage.getItem(key);
-            if(salvati) datiMese = JSON.parse(salvati); else generaMese(m, a);
-            aggiornaUI(); vaiAPagina(2);
+            if(salvati) {
+                datiMese = JSON.parse(salvati);
+            } else {
+                generaMese(mese, anno);
+            }
+            
+            aggiornaUI();
+            vaiAPagina(2);
         }
 
         function generaMese(mese, anno) {
-            const num = new Date(anno, parseInt(mese) + 1, 0).getDate();
+            const numGiorni = new Date(anno, parseInt(mese) + 1, 0).getDate();
             datiMese = [];
-            for(let d=1; d<=num; d++) {
-                let dt = new Date(anno, mese, d);
-                let dw = dt.toLocaleDateString('it-IT',{weekday:'short'}).toUpperCase();
-                let day = dt.getDay(); 
-                let isF = festivi.includes(`${d}-${mese}`) || day === 0 || day === 6;
-                let r = { giorno: d, dw, isFestivo: isF, e:'', u:'', tipo:'', ord:0, str:0, ass:0 };
-                if(!isF) { r.e = "08:00"; r.u = "17:00"; r.ord = 480; } 
-                else if(festivi.includes(`${d}-${mese}`)) { r.tipo = "76-FESTIVITA"; r.ass = 480; }
-                datiMese.push(r);
+            
+            for(let giorno = 1; giorno <= numGiorni; giorno++) {
+                const data = new Date(anno, mese, giorno);
+                const giornoSettimana = data.toLocaleDateString('it-IT',{weekday:'short'}).toUpperCase();
+                const isFestivo = isFestivo(giorno, parseInt(mese), parseInt(anno));
+                
+                const record = {
+                    giorno: giorno,
+                    dw: giornoSettimana,
+                    isFestivo: isFestivo,
+                    e: '',
+                    u: '',
+                    tipo: '',
+                    ord: 0,
+                    str: 0,
+                    ass: 0
+                };
+                
+                if(!isFestivo) {
+                    record.e = "08:00";
+                    record.u = "17:00";
+                    record.ord = 480;
+                } else if(isFestivo) {
+                    record.tipo = "76-FESTIVITA";
+                    record.ass = 480;
+                }
+                
+                datiMese.push(record);
             }
         }
 
         function aggiornaUI() {
-            const p = JSON.parse(localStorage.getItem('esa_v4_profile'));
-            const mIdx = document.getElementById('mese').value;
-            const meseNome = document.getElementById('mese').options[mIdx].text;
-            const annoText = document.getElementById('anno').value;
+            const profilo = JSON.parse(localStorage.getItem('esa_v4_profile'));
+            const meseIdx = document.getElementById('mese').value;
+            const meseNome = document.getElementById('mese').options[meseIdx].text;
+            const anno = document.getElementById('anno').value;
             
-            document.getElementById('titoloPagina2').innerText = `${meseNome} ${annoText}`;
-            document.getElementById('sottotitoloNome').innerText = p.nome.toUpperCase();
-            document.getElementById('print-nome').innerText = p.nome.toUpperCase();
-            document.getElementById('print-mese').innerText = `${meseNome} ${annoText}`;
-            document.getElementById('print-targa').innerText = p.targa.toUpperCase();
+            // Aggiorna UI
+            document.getElementById('titoloPagina2').innerText = `${meseNome} ${anno}`;
+            document.getElementById('sottotitoloNome').innerText = profilo.nome.toUpperCase();
+            document.getElementById('print-nome').innerText = profilo.nome.toUpperCase();
+            document.getElementById('print-mese').innerText = `${meseNome} ${anno}`;
+            document.getElementById('print-targa').innerText = profilo.targa.toUpperCase();
             document.getElementById('print-date').innerText = new Date().toLocaleDateString('it-IT');
-            renderApp(); renderPrint();
+            
+            renderApp();
+            renderPrint();
         }
 
         function renderApp() {
-            document.getElementById('listaGiorni').innerHTML = datiMese.map((r, i) => {
-                let statusColor = r.isFestivo ? 'border-red-500 bg-red-50/30' : 'border-blue-500 bg-white';
-                let badge = r.str > 0 ? `<span class="bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">STRAORD.</span>` : 
-                           (r.ass > 0 ? `<span class="bg-orange-500 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">ASSENZA</span>` : '');
+            const container = document.getElementById('listaGiorni');
+            container.innerHTML = datiMese.map((record, index) => {
+                let coloreBordo = record.isFestivo ? 'border-red-500 bg-red-50/30' : 'border-blue-500 bg-white';
+                let badge = '';
+                
+                if (record.str > 0) {
+                    badge = `<span class="bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">STRAORD.</span>`;
+                } else if (record.ass > 0) {
+                    badge = `<span class="bg-orange-500 text-white text-[9px] px-2 py-0.5 rounded-md font-bold ml-2">ASSENZA</span>`;
+                }
+                
+                let orariText = record.tipo || (record.e ? `${record.e} > ${record.u}` : 'Riposo');
                 
                 return `
-                <div onclick="apriModifica(${i})" class="${statusColor} p-4 rounded-2xl shadow-sm flex justify-between items-center border-l-8 cursor-pointer active:scale-95 transition-all">
+                <div onclick="apriModifica(${index})" class="${coloreBordo} p-4 rounded-2xl shadow-sm flex justify-between items-center border-l-8 cursor-pointer active:scale-95 transition-all">
                     <div>
-                        <span class="font-black text-lg ${r.isFestivo ? 'text-red-700' : 'text-slate-800'}">${r.dw} ${r.giorno}</span>
+                        <span class="font-black text-lg ${record.isFestivo ? 'text-red-700' : 'text-slate-800'}">${record.dw} ${record.giorno}</span>
                         ${badge}
                     </div>
                     <div class="text-right">
-                        <p class="text-[11px] text-slate-500 font-bold uppercase">${r.tipo || (r.e ? r.e+' > '+r.u : 'Riposo')}</p>
+                        <p class="text-[11px] text-slate-500 font-bold uppercase">${orariText}</p>
                     </div>
                 </div>`;
             }).join('');
         }
 
         function renderPrint() {
-            const tbody = document.getElementById('print-rows'); tbody.innerHTML = "";
-            let tO=0, tS=0, tA=0;
-            datiMese.forEach(r => {
-                tO+=r.ord; tS+=r.str; tA+=r.ass;
-                const cls = r.isFestivo ? 'class="festivo-text"' : '';
-                tbody.innerHTML += `<tr>
-                    <td ${cls}>${r.dw} ${r.giorno}</td>
-                    <td>${r.e}</td>
-                    <td>${(r.e && !r.isFestivo) ? '12:00' : ''}</td>
-<td>${(r.e && !r.isFestivo) ? '13:00' : ''}</td>
-                    <td>${r.u}</td>
-                    <td>${r.ord>0?format(r.ord):''}</td>
-                    <td>${r.str>0?format(r.str):''}</td>
-                    <td>${r.ass>0?format(r.ass):''}</td>
-                    <td style="text-align: left; padding-left: 5px; font-size: 7pt;">${r.tipo}</td>
+            const tbody = document.getElementById('print-rows');
+            tbody.innerHTML = "";
+            
+            let totaleOrd = 0, totaleStr = 0, totaleAss = 0;
+            
+            datiMese.forEach(record => {
+                totaleOrd += record.ord;
+                totaleStr += record.str;
+                totaleAss += record.ass;
+                
+                const classeFestivo = record.isFestivo ? 'class="festivo-text"' : '';
+                
+                tbody.innerHTML += `
+                <tr>
+                    <td ${classeFestivo}>${record.dw} ${record.giorno}</td>
+                    <td>${record.e || ''}</td>
+                    <td>${(record.e && !record.isFestivo) ? '12:00' : ''}</td>
+                    <td>${(record.e && !record.isFestivo) ? '13:00' : ''}</td>
+                    <td>${record.u || ''}</td>
+                    <td>${record.ord > 0 ? formatMinuti(record.ord) : ''}</td>
+                    <td>${record.str > 0 ? formatMinuti(record.str) : ''}</td>
+                    <td>${record.ass > 0 ? formatMinuti(record.ass) : ''}</td>
+                    <td style="text-align: left; padding-left: 5px; font-size: 7pt;">${record.tipo || ''}</td>
                 </tr>`;
             });
-            document.getElementById('t-ord').innerText = format(tO);
-            document.getElementById('t-str').innerText = format(tS);
-            document.getElementById('t-ass').innerText = format(tA);
+            
+            document.getElementById('t-ord').innerText = formatMinuti(totaleOrd);
+            document.getElementById('t-str').innerText = formatMinuti(totaleStr);
+            document.getElementById('t-ass').innerText = formatMinuti(totaleAss);
         }
 
-        function apriModifica(i) {
-            indexCorrente = i; const r = datiMese[i];
-            document.getElementById('giornoModifica').innerText = `${r.dw} ${r.giorno}`;
-            document.getElementById('editEntrata').value = r.e || "08:00";
-            document.getElementById('editUscita').value = r.u || "17:00";
-            document.getElementById('editTipo').value = r.tipo;
-            document.getElementById('assenzaTotale').checked = (r.ass === 480 && !r.e);
-            toggleAssenzaView(); vaiAPagina(3);
+        function apriModifica(index) {
+            indexCorrente = index;
+            const record = datiMese[index];
+            
+            document.getElementById('giornoModifica').innerText = `${record.dw} ${record.giorno}`;
+            document.getElementById('editEntrata').value = record.e || "08:00";
+            document.getElementById('editUscita').value = record.u || "17:00";
+            document.getElementById('editTipo').value = record.tipo || "";
+            document.getElementById('assenzaTotale').checked = (record.ass === 480 && !record.e);
+            
+            toggleAssenzaView();
+            vaiAPagina(3);
         }
 
         function salvaGiorno() {
-            const r = datiMese[indexCorrente];
-            const isA = document.getElementById('assenzaTotale').checked;
+            const record = datiMese[indexCorrente];
+            const assenzaTotale = document.getElementById('assenzaTotale').checked;
             const tipo = document.getElementById('editTipo').value;
-            let ord=0, str=0, ass=0, ent='', usc='';
-
-            if(isA) {
-                if(!tipo) return alert("Scegli un codice/motivo per l'assenza.");
+            
+            let ord = 0, str = 0, ass = 0, entrata = '', uscita = '';
+            
+            if(assenzaTotale) {
+                if(!tipo) {
+                    alert("Scegli un codice/motivo per l'assenza.");
+                    return;
+                }
                 ass = 480;
             } else {
-                ent = document.getElementById('editEntrata').value;
-                usc = document.getElementById('editUscita').value;
-                let min = (parseMin(usc) - parseMin(ent));
+                entrata = document.getElementById('editEntrata').value;
+                uscita = document.getElementById('editUscita').value;
                 
-                // LOGICA PAUSA PRANZO AGGIORNATA
-                // Se NON è Sabato/Domenica/Festivo e lavora più di 4 ore, togli 60 min
-                if(!r.isFestivo && min > 240) {
-                    min -= 60; 
+                if(!validaOrari(entrata, uscita)) {
+                    alert("Orari non validi. Verifica che l'uscita sia successiva all'entrata.");
+                    return;
                 }
-                // Se è FESTIVO/SABATO/DOMENICA, non togliamo nulla (es. 8-13 = 5h)
-
-                if(r.isFestivo) { 
-                    ord = 0; str = min; ass = 0;
+                
+                let minutiTotali = parseMin(uscita) - parseMin(entrata);
+                
+                // Sottrazione pausa pranzo solo per giorni non festivi e con >4 ore
+                if(!record.isFestivo && minutiTotali > 240) {
+                    minutiTotali -= 60;
+                }
+                
+                if(record.isFestivo) {
+                    ord = 0;
+                    str = minutiTotali;
+                    ass = 0;
                 } else {
-                    if(min >= 480) { ord = 480; str = min - 480; }
-                    else { ord = min; ass = 480 - min; if(!tipo) return alert("Ore inferiori a 8: inserisci motivo assenza."); }
+                    if(minutiTotali >= 480) {
+                        ord = 480;
+                        str = minutiTotali - 480;
+                    } else {
+                        ord = minutiTotali;
+                        ass = 480 - minutiTotali;
+                        if(!tipo) {
+                            alert("Ore inferiori a 8: inserisci motivo assenza.");
+                            return;
+                        }
+                    }
                 }
             }
-            datiMese[indexCorrente] = {...r, e:ent, u:usc, ord, str, ass, tipo};
-            localStorage.setItem(`esa_v4_${document.getElementById('anno').value}_${document.getElementById('mese').value}`, JSON.stringify(datiMese));
-            aggiornaUI(); vaiAPagina(2);
+            
+            // Aggiorna record
+            datiMese[indexCorrente] = {
+                ...record,
+                e: entrata,
+                u: uscita,
+                ord: ord,
+                str: str,
+                ass: ass,
+                tipo: tipo
+            };
+            
+            // Salva in localStorage
+            const anno = document.getElementById('anno').value;
+            const mese = document.getElementById('mese').value;
+            localStorage.setItem(`esa_v4_${anno}_${mese}`, JSON.stringify(datiMese));
+            
+            aggiornaUI();
+            vaiAPagina(2);
         }
 
-        function parseMin(t) { const [h,m]=t.split(':').map(Number); return h*60+m; }
-        function format(m) { return m > 0 ? `${Math.floor(m/60)}:${(m%60).toString().padStart(2,'0')}` : ''; }
-        function toggleAssenzaView() { document.getElementById('campiOrario').style.opacity = document.getElementById('assenzaTotale').checked ? "0.2" : "1"; }
+        // =================== FUNZIONI UTILITY ===================
+        function parseMin(ora) {
+            const [ore, minuti] = ora.split(':').map(Number);
+            return ore * 60 + minuti;
+        }
 
-        (function() {
-            let h = ""; for(let i=0; i<96; i++) { let t = `${Math.floor(i/4).toString().padStart(2,'0')}:${(i%4*15).toString().padStart(2,'0')}`; h += `<option value="${t}">${t}</option>`; }
-            document.getElementById('editEntrata').innerHTML = h; document.getElementById('editUscita').innerHTML = h;
-            const p = JSON.parse(localStorage.getItem('esa_v4_profile'));
-            if(p) { document.getElementById('nome').value = p.nome; document.getElementById('targa').value = p.targa; }
+        function formatMinuti(minuti) {
+            if(minuti <= 0) return '';
+            const ore = Math.floor(minuti / 60);
+            const min = minuti % 60;
+            return `${ore}:${min.toString().padStart(2, '0')}`;
+        }
+
+        function toggleAssenzaView() {
+            const campi = document.getElementById('campiOrario');
+            const assenzaTotale = document.getElementById('assenzaTotale').checked;
+            campi.style.opacity = assenzaTotale ? "0.2" : "1";
+            campi.style.pointerEvents = assenzaTotale ? "none" : "auto";
+        }
+
+        // =================== ESPORTAZIONE DATI ===================
+        function esportaTuttiDatiCSV() {
+            const profilo = JSON.parse(localStorage.getItem('esa_v4_profile')) || {nome: '', targa: ''};
+            const keys = Object.keys(localStorage).filter(key => key.startsWith('esa_v4_'));
+            
+            if(keys.length === 0) {
+                alert("Nessun dato da esportare.");
+                return;
+            }
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Intestazione
+            csvContent += "NOME,TARGA,ANNO,MESE,GIORNO,GIORNO_SETTIMANA,ENTRATA,USCITA,TIPO,ORE_ORD,ORE_STR,ORE_ASS,FESTIVO\r\n";
+            
+            keys.forEach(key => {
+                const match = key.match(/esa_v4_(\d+)_(\d+)/);
+                if(match) {
+                    const anno = match[1];
+                    const mese = match[2];
+                    const dati = JSON.parse(localStorage.getItem(key));
+                    
+                    dati.forEach(record => {
+                        const riga = [
+                            profilo.nome,
+                            profilo.targa,
+                            anno,
+                            parseInt(mese) + 1,
+                            record.giorno,
+                            record.dw,
+                            record.e,
+                            record.u,
+                            record.tipo,
+                            record.ord,
+                            record.str,
+                            record.ass,
+                            record.isFestivo ? 'SI' : 'NO'
+                        ].map(cell => `"${cell}"`).join(',');
+                        
+                        csvContent += riga + "\r\n";
+                    });
+                }
+            });
+            
+            // Crea e scarica file
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `esa_presenze_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function esportaDatiJSON() {
+            const profilo = JSON.parse(localStorage.getItem('esa_v4_profile')) || {nome: '', targa: ''};
+            const keys = Object.keys(localStorage).filter(key => key.startsWith('esa_v4_'));
+            
+            const exportData = {
+                profilo: profilo,
+                esportazione: new Date().toISOString(),
+                dati: []
+            };
+            
+            keys.forEach(key => {
+                const match = key.match(/esa_v4_(\d+)_(\d+)/);
+                if(match) {
+                    exportData.dati.push({
+                        anno: match[1],
+                        mese: match[2],
+                        records: JSON.parse(localStorage.getItem(key))
+                    });
+                }
+            });
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `esa_presenze_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // =================== IMPORT AZIONE DATI ===================
+        function importaDati() {
+            const fileInput = document.getElementById('fileImport');
+            const file = fileInput.files[0];
+            
+            if(!file) {
+                alert("Seleziona un file da importare.");
+                return;
+            }
+            
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    
+                    if(file.name.endsWith('.json')) {
+                        importaDaJSON(content);
+                    } else if(file.name.endsWith('.csv')) {
+                        importaDaCSV(content);
+                    } else {
+                        alert("Formato file non supportato. Usa JSON o CSV.");
+                    }
+                } catch(error) {
+                    console.error("Errore importazione:", error);
+                    alert("Errore nell'importazione del file. Verifica il formato.");
+                }
+            };
+            
+            if(file.name.endsWith('.json')) {
+                reader.readAsText(file);
+            } else if(file.name.endsWith('.csv')) {
+                reader.readAsText(file, 'UTF-8');
+            }
+        }
+
+        function importaDaJSON(jsonString) {
+            const dati = JSON.parse(jsonString);
+            
+            if(dati.profilo) {
+                localStorage.setItem('esa_v4_profile', JSON.stringify(dati.profilo));
+                document.getElementById('nome').value = dati.profilo.nome;
+                document.getElementById('targa').value = dati.profilo.targa;
+            }
+            
+            if(dati.dati && Array.isArray(dati.dati)) {
+                dati.dati.forEach(meseDati => {
+                    const key = `esa_v4_${meseDati.anno}_${meseDati.mese}`;
+                    localStorage.setItem(key, JSON.stringify(meseDati.records));
+                });
+            }
+            
+            alert(`Importati ${dati.dati?.length || 0} mesi di dati con successo!`);
+            fileImport.value = '';
+        }
+
+        function importaDaCSV(csvString) {
+            const righe = csvString.split('\n');
+            const headers = righe[0].split(',').map(h => h.replace(/"/g, '').trim());
+            
+            let profilo = null;
+            const mesiDati = {};
+            
+            for(let i = 1; i < righe.length; i++) {
+                if(!righe[i].trim()) continue;
+                
+                const valori = righe[i].split(',').map(v => v.replace(/"/g, '').trim());
+                const record = {};
+                
+                headers.forEach((header, index) => {
+                    record[header] = valori[index];
+                });
+                
+                if(!profilo) {
+                    profilo = {
+                        nome: record.NOME,
+                        targa: record.TARGA
+                    };
+                }
+                
+                const key = `esa_v4_${record.ANNO}_${parseInt(record.MESE) - 1}`;
+                if(!mesiDati[key]) mesiDati[key] = [];
+                
+                mesiDati[key].push({
+                    giorno: parseInt(record.GIORNO),
+                    dw: record.GIORNO_SETTIMANA,
+                    e: record.ENTRATA,
+                    u: record.USCITA,
+                    tipo: record.TIPO,
+                    ord: parseInt(record.ORE_ORD),
+                    str: parseInt(record.ORE_STR),
+                    ass: parseInt(record.ORE_ASS),
+                    isFestivo: record.FESTIVO === 'SI'
+                });
+            }
+            
+            if(profilo) {
+                localStorage.setItem('esa_v4_profile', JSON.stringify(profilo));
+            }
+            
+            Object.keys(mesiDati).forEach(key => {
+                localStorage.setItem(key, JSON.stringify(mesiDati[key]));
+            });
+            
+            alert(`Importati ${Object.keys(mesiDati).length} mesi di dati con successo!`);
+            fileImport.value = '';
+        }
+
+        // =================== REPORT MENSILI ===================
+        function caricaReport() {
+            const mese = document.getElementById('reportMese').value;
+            const anno = document.getElementById('reportAnno').value;
+            const key = `esa_v4_${anno}_${mese}`;
+            
+            const datiSalvati = localStorage.getItem(key);
+            if(!datiSalvati) {
+                alert("Nessun dato disponibile per questo mese.");
+                return;
+            }
+            
+            const dati = JSON.parse(datiSalvati);
+            const profilo = JSON.parse(localStorage.getItem('esa_v4_profile'));
+            
+            // Calcola totali
+            let totaleOrd = 0, totaleStr = 0, totaleAss = 0, giorniLavorativi = 0;
+            const assenzePerTipo = {};
+            
+            dati.forEach(record => {
+                totaleOrd += record.ord;
+                totaleStr += record.str;
+                totaleAss += record.ass;
+                
+                if(!record.isFestivo) giorniLavorativi++;
+                
+                if(record.tipo && record.tipo !== '') {
+                    if(!assenzePerTipo[record.tipo]) {
+                        assenzePerTipo[record.tipo] = 0;
+                    }
+                    assenzePerTipo[record.tipo] += record.ass;
+                }
+            });
+            
+            // Aggiorna UI
+            document.getElementById('totOrd').textContent = formatMinuti(totaleOrd);
+            document.getElementById('totStr').textContent = formatMinuti(totaleStr);
+            document.getElementById('totAss').textContent = formatMinuti(totaleAss);
+            document.getElementById('totGiorni').textContent = giorniLavorativi;
+            
+            // Aggiorna dettagli assenze
+            const containerAssenze = document.getElementById('dettagliAssenze');
+            containerAssenze.innerHTML = '';
+            
+            if(Object.keys(assenzePerTipo).length === 0) {
+                containerAssenze.innerHTML = '<p class="text-slate-500">Nessuna assenza registrata</p>';
+            } else {
+                Object.entries(assenzePerTipo).forEach(([tipo, minuti]) => {
+                    if(minuti > 0) {
+                        const div = document.createElement('div');
+                        div.className = 'flex justify-between items-center bg-white p-3 rounded-lg';
+                        div.innerHTML = `
+                            <span class="font-medium">${tipo}</span>
+                            <span class="font-bold text-orange-600">${formatMinuti(minuti)}</span>
+                        `;
+                        containerAssenze.appendChild(div);
+                    }
+                });
+            }
+            
+            // Mostra contenuto report
+            document.getElementById('reportContenuto').classList.remove('hidden');
+        }
+
+        // =================== GENERAZIONE PDF ===================
+        function generaPDF() {
+            const profilo = JSON.parse(localStorage.getItem('esa_v4_profile'));
+            const meseIdx = document.getElementById('mese').value;
+            const meseNome = document.getElementById('mese').options[meseIdx].text;
+            const anno = document.getElementById('anno').value;
+            
+            const doc = new jsPDF('p', 'mm', 'a4');
+            
+            // Header
+            doc.setFontSize(20);
+            doc.setTextColor(40);
+            doc.text('ESA - FOGLIO PRESENZE', 105, 20, { align: 'center' });
+            
+            doc.setFontSize(12);
+            doc.text(`Filiale Bologna`, 20, 30);
+            doc.text(`Mese: ${meseNome} ${anno}`, 20, 38);
+            doc.text(`Dipendente: ${profilo.nome.toUpperCase()}`, 20, 46);
+            doc.text(`Targa: ${profilo.targa.toUpperCase()}`, 20, 54);
+            
+            // Tabella
+            const headers = [['Giorno', 'Entrata', 'Inizio', 'Fine', 'Uscita', 'Ord.', 'Straord.', 'Assenza', 'Tipo Assenza']];
+            const rows = datiMese.map(record => [
+                `${record.dw} ${record.giorno}`,
+                record.e || '',
+                (record.e && !record.isFestivo) ? '12:00' : '',
+                (record.e && !record.isFestivo) ? '13:00' : '',
+                record.u || '',
+                record.ord > 0 ? formatMinuti(record.ord) : '',
+                record.str > 0 ? formatMinuti(record.str) : '',
+                record.ass > 0 ? formatMinuti(record.ass) : '',
+                record.tipo || ''
+            ]);
+            
+            doc.autoTable({
+                head: headers,
+                body: rows,
+                startY: 60,
+                margin: { left: 20, right: 20 },
+                styles: { fontSize: 8, cellPadding: 1 },
+                headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [248, 248, 248] }
+            });
+            
+            // Totali
+            const totaleOrd = datiMese.reduce((sum, r) => sum + r.ord, 0);
+            const totaleStr = datiMese.reduce((sum, r) => sum + r.str, 0);
+            const totaleAss = datiMese.reduce((sum, r) => sum + r.ass, 0);
+            
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Totali del mese:`, 120, finalY);
+            doc.text(`${formatMinuti(totaleOrd)}`, 160, finalY);
+            doc.text(`${formatMinuti(totaleStr)}`, 175, finalY);
+            doc.text(`${formatMinuti(totaleAss)}`, 190, finalY);
+            
+            // Firme
+            const firmeY = finalY + 30;
+            doc.line(20, firmeY, 80, firmeY);
+            doc.line(120, firmeY, 180, firmeY);
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'normal');
+            doc.text('Firma del dipendente', 50, firmeY + 10, { align: 'center' });
+            doc.text('Firma del responsabile', 150, firmeY + 10, { align: 'center' });
+            
+            // Footer
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text(`Generato il ${new Date().toLocaleDateString('it-IT')} - ESA Smart Tracker V4.2`, 105, 285, { align: 'center' });
+            
+            // Salva PDF
+            doc.save(`Presenze_${profilo.nome.replace(/\s/g, '_')}_${meseNome}_${anno}.pdf`);
+        }
+
+        // =================== GESTIONE DATI ===================
+        function resetMeseCorrente() {
+            if(!confirm("Vuoi davvero resettare tutti i dati del mese corrente? Questa azione non può essere annullata.")) {
+                return;
+            }
+            
+            const anno = document.getElementById('anno').value;
+            const mese = document.getElementById('mese').value;
+            generaMese(mese, anno);
+            localStorage.setItem(`esa_v4_${anno}_${mese}`, JSON.stringify(datiMese));
+            aggiornaUI();
+            alert("Mese corrente resettato con successo.");
+        }
+
+        function eliminaTuttiDati() {
+            if(!confirm("ATTENZIONE: Vuoi eliminare TUTTI i dati salvati? Questa azione è irreversibile.")) {
+                return;
+            }
+            
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+                if(key.startsWith('esa_v4_')) {
+                    localStorage.removeItem(key);
+                }
+            });
+            
+            datiMese = [];
+            alert("Tutti i dati sono stati eliminati.");
+            vaiAPagina(1);
+        }
+
+        // =================== INIZIALIZZAZIONE ===================
+        (function init() {
+            // Popola selettori orari
+            let htmlOrari = "";
+            for(let i = 0; i < 96; i++) {
+                const ore = Math.floor(i / 4).toString().padStart(2, '0');
+                const minuti = (i % 4 * 15).toString().padStart(2, '0');
+                const orario = `${ore}:${minuti}`;
+                htmlOrari += `<option value="${orario}">${orario}</option>`;
+            }
+            document.getElementById('editEntrata').innerHTML = htmlOrari;
+            document.getElementById('editUscita').innerHTML = htmlOrari;
+            
+            // Carica profilo se esiste
+            const profiloSalvato = localStorage.getItem('esa_v4_profile');
+            if(profiloSalvato) {
+                const profilo = JSON.parse(profiloSalvato);
+                document.getElementById('nome').value = profilo.nome;
+                document.getElementById('targa').value = profilo.targa;
+            }
+            
+            // Validazione in tempo reale
+            document.getElementById('targa').addEventListener('input', function(e) {
+                if(validaTarga(e.target.value)) {
+                    mostraSuccesso(this);
+                } else {
+                    mostraErrore(this);
+                }
+            });
+            
+            document.getElementById('nome').addEventListener('input', function(e) {
+                if(validaNome(e.target.value)) {
+                    mostraSuccesso(this);
+                } else {
+                    mostraErrore(this);
+                }
+            });
         })();
     </script>
 </body>
