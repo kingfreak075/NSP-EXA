@@ -49,10 +49,6 @@
         button:hover {
             background-color: #002070;
         }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
         .user-card {
             background-color: #e8f0fe;
             border-radius: 8px;
@@ -78,24 +74,6 @@
             border-radius: 4px;
             letter-spacing: 4px;
         }
-        .error-message {
-            color: #dc3545;
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-            display: none;
-        }
-        .success-message {
-            color: #28a745;
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-            display: none;
-        }
         .logout-btn {
             background-color: #dc3545;
             margin-top: 15px;
@@ -103,9 +81,25 @@
         .logout-btn:hover {
             background-color: #c82333;
         }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        .success {
+            color: #28a745;
+            background-color: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
     </style>
     
-    <!-- Supabase JS - DEVE ESSERE PRIMA DEL NOSTRO SCRIPT -->
+    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -123,7 +117,7 @@
             </p>
         </div>
         
-        <!-- Sezione Utente (dopo login) -->
+        <!-- Sezione Utente -->
         <div id="userSection" style="display: none;">
             <div class="user-card">
                 <h3 style="color: #0033a0; margin-top: 0;">✅ Accesso effettuato</h3>
@@ -135,18 +129,16 @@
                     <strong>Email:</strong> <span id="userEmail"></span>
                 </div>
                 
-                <!-- Sezione PIN (solo primo accesso) -->
+                <!-- Sezione PIN -->
                 <div id="pinSection" class="pin-input">
-                    <p><strong>Primo accesso - Imposta il tuo PIN:</strong></p>
+                    <p><strong>Primo accesso - Imposta PIN 4 cifre:</strong></p>
                     <input type="password" id="pin" maxlength="4" pattern="\d{4}" placeholder="****">
                     <button onclick="salvaPin()" style="background-color: #28a745; margin-top: 10px;">
                         Conferma PIN
                     </button>
                 </div>
                 
-                <!-- Messaggi di feedback -->
-                <div id="errorMessage" class="error-message"></div>
-                <div id="successMessage" class="success-message"></div>
+                <div id="message" class="error"></div>
                 
                 <button onclick="logout()" class="logout-btn">
                     Esci
@@ -159,54 +151,41 @@
     // ===========================================
     // CONFIGURAZIONE - INSERISCI I TUOI DATI QUI
     // ===========================================
-    const SUPABASE_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co';  // Il tuo URL Supabase
-    const SUPABASE_ANON_KEY = 'sb_publishable_a3USDfV7gbuauU2Kd6DuQQ_8PFVElpy';              // La tua chiave anonima
+    const SUPABASE_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co';  // IL TUO URL
+    const SUPABASE_ANON_KEY = 'sb_publishable_a3USDfV7gbuauU2Kd6DuQQ_8PFVElpy';              // LA TUA CHIAVE
     
-    // Inizializza Supabase
-    const supabase = supabaseCreateClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Inizializza Supabase (USA UN NOME DIVERSO!)
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     // ===========================================
-    // FUNZIONI DI AUTENTICAZIONE
+    // FUNZIONI GLOBALI (attaccate a window)
     // ===========================================
     
-    /**
-     * Funzione di login con Microsoft
-     * Questa funzione viene chiamata quando si clicca il pulsante
-     */
+    // Login
     window.loginWithMicrosoft = async function() {
         try {
-            // Disabilita il pulsante durante il login
             const loginBtn = document.getElementById('loginBtn');
             if (loginBtn) {
                 loginBtn.disabled = true;
-                loginBtn.textContent = 'Reindirizzamento in corso...';
+                loginBtn.textContent = 'Reindirizzamento...';
             }
             
-            console.log('Avvio login con Microsoft...');
+            console.log('Avvio login...');
             
-            // Usa Supabase per il login OAuth con Microsoft
-            const { data, error } = await supabase.auth.signInWithOAuth({
+            const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'azure',
                 options: {
-                    redirectTo: window.location.href,  // Torna a questa pagina
-                    scopes: 'email profile',
-                    queryParams: {
-                        prompt: 'select_account'  // Forza la selezione dell'account
-                    }
+                    redirectTo: window.location.href,
+                    scopes: 'email profile'
                 }
             });
             
-            if (error) {
-                throw error;
-            }
-            
-            // Nota: la redirect avviene automaticamente
+            if (error) throw error;
             
         } catch (error) {
-            console.error('Errore durante il login:', error);
-            mostraErrore('Errore durante il login: ' + error.message);
+            console.error('Errore:', error);
+            mostraMessaggio('Errore: ' + error.message, 'error');
             
-            // Riabilita il pulsante
             const loginBtn = document.getElementById('loginBtn');
             if (loginBtn) {
                 loginBtn.disabled = false;
@@ -215,162 +194,108 @@
         }
     };
     
-    /**
-     * Funzione di logout
-     */
+    // Logout
     window.logout = async function() {
         try {
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
-            
-            // Ricarica la pagina per tornare allo stato iniziale
+            await supabaseClient.auth.signOut();
             window.location.reload();
-            
         } catch (error) {
-            console.error('Errore durante il logout:', error);
-            mostraErrore('Errore durante il logout: ' + error.message);
+            console.error('Errore logout:', error);
         }
     };
     
-    /**
-     * Salva il PIN per i nuovi utenti
-     */
+    // Salva PIN
     window.salvaPin = async function() {
         const pin = document.getElementById('pin').value;
         
-        // Validazione PIN
         if (!pin || !/^\d{4}$/.test(pin)) {
-            mostraErrore('Inserisci un PIN valido di 4 cifre');
+            mostraMessaggio('PIN non valido (4 cifre)', 'error');
             return;
         }
         
         try {
-            // Prendi la sessione corrente
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            const { data: { session } } = await supabaseClient.auth.getSession();
             
-            if (sessionError) throw sessionError;
-            if (!session) throw new Error('Nessuna sessione attiva');
+            if (!session) {
+                mostraMessaggio('Sessione non valida', 'error');
+                return;
+            }
             
             const user = session.user;
             
-            // Salva nella tabella utenti
-            const { error: insertError } = await supabase
+            const { error } = await supabaseClient
                 .from('utenti')
-                .insert([
-                    {
-                        email: user.email,
-                        nome: user.user_metadata?.name || user.email?.split('@')[0],
-                        pin: pin,  // IN PRODUZIONE: fai l'hash del PIN!
-                        microsoft_id: user.id,
-                        created_at: new Date()
-                    }
-                ]);
+                .insert([{
+                    email: user.email,
+                    nome: user.user_metadata?.name || user.email,
+                    pin: pin,
+                    microsoft_id: user.id
+                }]);
             
-            if (insertError) {
-                // Se l'errore è "duplicate key", l'utente esiste già
-                if (insertError.code === '23505') {
-                    mostraSuccesso('Utente già registrato!');
+            if (error) {
+                if (error.code === '23505') {
+                    mostraMessaggio('Utente già registrato!', 'success');
                     document.getElementById('pinSection').style.display = 'none';
                 } else {
-                    throw insertError;
+                    throw error;
                 }
             } else {
-                mostraSuccesso('Registrazione completata con successo!');
+                mostraMessaggio('Registrazione completata!', 'success');
                 document.getElementById('pinSection').style.display = 'none';
             }
             
         } catch (error) {
-            console.error('Errore nel salvataggio PIN:', error);
-            mostraErrore('Errore nel salvataggio: ' + error.message);
+            console.error('Errore:', error);
+            mostraMessaggio('Errore: ' + error.message, 'error');
         }
     };
     
     // ===========================================
-    // FUNZIONI DI UTILITÀ
+    // FUNZIONI DI SUPPORTO
     // ===========================================
     
-    /**
-     * Mostra un messaggio di errore
-     */
-    function mostraErrore(messaggio) {
-        const errorDiv = document.getElementById('errorMessage');
-        if (errorDiv) {
-            errorDiv.textContent = messaggio;
-            errorDiv.style.display = 'block';
-            
-            // Nascondi dopo 5 secondi
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
-        }
+    function mostraMessaggio(testo, tipo) {
+        const msgDiv = document.getElementById('message');
+        msgDiv.textContent = testo;
+        msgDiv.className = tipo;
+        msgDiv.style.display = 'block';
+        
+        setTimeout(() => {
+            msgDiv.style.display = 'none';
+        }, 3000);
     }
     
-    /**
-     * Mostra un messaggio di successo
-     */
-    function mostraSuccesso(messaggio) {
-        const successDiv = document.getElementById('successMessage');
-        if (successDiv) {
-            successDiv.textContent = messaggio;
-            successDiv.style.display = 'block';
-            
-            // Nascondi dopo 5 secondi
-            setTimeout(() => {
-                successDiv.style.display = 'none';
-            }, 5000);
-        }
-    }
-    
-    /**
-     * Aggiorna l'interfaccia in base allo stato di login
-     */
-    async function aggiornaInterfaccia() {
+    async function aggiornaUI() {
         try {
-            // Prendi la sessione corrente
-            const { data: { session }, error } = await supabase.auth.getSession();
-            
-            if (error) throw error;
+            const { data: { session } } = await supabaseClient.auth.getSession();
             
             if (session) {
                 // Utente loggato
                 const user = session.user;
-                const userEmail = user.email;
-                const userName = user.user_metadata?.name || userEmail?.split('@')[0] || 'Utente';
                 
-                // Aggiorna UI
                 document.getElementById('loginSection').style.display = 'none';
                 document.getElementById('userSection').style.display = 'block';
-                document.getElementById('userName').textContent = userName;
-                document.getElementById('userEmail').textContent = userEmail;
+                document.getElementById('userName').textContent = 
+                    user.user_metadata?.name || user.email.split('@')[0];
+                document.getElementById('userEmail').textContent = user.email;
                 
-                // Verifica se l'utente esiste già nella tabella
-                const { data: existingUser, error: queryError } = await supabase
+                // Verifica se esiste già
+                const { data: existing } = await supabaseClient
                     .from('utenti')
                     .select('*')
-                    .eq('email', userEmail)
+                    .eq('email', user.email)
                     .maybeSingle();
                 
-                if (queryError) throw queryError;
-                
-                // Mostra o nascondi la sezione PIN
-                if (existingUser) {
-                    document.getElementById('pinSection').style.display = 'none';
-                } else {
-                    document.getElementById('pinSection').style.display = 'block';
-                }
-                
-                console.log('Utente loggato:', userEmail);
+                document.getElementById('pinSection').style.display = existing ? 'none' : 'block';
                 
             } else {
-                // Nessun utente loggato
+                // Nessun utente
                 document.getElementById('loginSection').style.display = 'block';
                 document.getElementById('userSection').style.display = 'none';
-                
-                console.log('Nessun utente loggato');
             }
             
         } catch (error) {
-            console.error('Errore nel controllo sessione:', error);
+            console.error('Errore aggiornamento UI:', error);
         }
     }
     
@@ -378,40 +303,31 @@
     // INIZIALIZZAZIONE
     // ===========================================
     
-    // Esegui quando la pagina è caricata
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Pagina caricata, controllo sessione...');
+        console.log('Pagina caricata');
+        aggiornaUI();
         
-        // Controlla se c'è un hash nell'URL (callback da OAuth)
-        if (window.location.hash) {
-            console.log('Hash rilevato, elaborazione callback...');
-        }
-        
-        // Aggiorna l'interfaccia in base allo stato di login
-        aggiornaInterfaccia();
-        
-        // Ascolta i cambiamenti di autenticazione
-        supabase.auth.onAuthStateChange((event, session) => {
+        // Ascolta cambiamenti auth
+        supabaseClient.auth.onAuthStateChange((event, session) => {
             console.log('Evento auth:', event);
-            aggiornaInterfaccia();
+            aggiornaUI();
         });
     });
     
-    // Per debug: rendi disponibile supabase nella console
+    // Debug
     window.debug = {
-        supabase: supabase,
         getSession: async () => {
-            const { data } = await supabase.auth.getSession();
-            console.log('Sessione corrente:', data);
+            const { data } = await supabaseClient.auth.getSession();
+            console.log('Sessione:', data);
         }
     };
     
     </script>
     
-    <!-- Pulsante di debug (rimuovi in produzione) -->
+    <!-- Debug button -->
     <div style="text-align: center; margin-top: 20px;">
-        <button onclick="debug.getSession()" style="background-color: #666; width: auto; padding: 5px 10px; font-size: 12px;">
-            Debug: Mostra sessione
+        <button onclick="debug.getSession()" style="background-color: #666; width: auto; padding: 5px 10px;">
+            Debug Sessione
         </button>
     </div>
 </body>
