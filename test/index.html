@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login OTIS Portal</title>
+    <title>OTIS - Accesso</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,7 +11,6 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            margin: 0;
             background-color: #f0f0f0;
         }
         .container {
@@ -22,17 +21,7 @@
             text-align: center;
             max-width: 400px;
         }
-        .otis-logo {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #0033a0;
-            margin-bottom: 1rem;
-        }
-        .welcome {
-            font-size: 1.5rem;
-            color: #333;
-            margin-bottom: 2rem;
-        }
+        .otis { color: #0033a0; font-size: 2rem; font-weight: bold; }
         button {
             background-color: #0033a0;
             color: white;
@@ -44,206 +33,159 @@
             width: 100%;
             margin: 10px 0;
         }
-        button:hover {
-            background-color: #002070;
-        }
         .user-card {
             background-color: #e8f0fe;
             border-radius: 8px;
             padding: 20px;
             margin-top: 20px;
-            text-align: left;
             display: none;
+            text-align: left;
         }
-        .user-card h3 {
-            margin-top: 0;
-            color: #0033a0;
-        }
-        .user-info {
-            margin: 10px 0;
+        input {
             padding: 8px;
-            background: white;
-            border-radius: 4px;
-        }
-        .logout-btn {
-            background-color: #dc3545;
-            margin-top: 10px;
-        }
-        .logout-btn:hover {
-            background-color: #c82333;
+            font-size: 16px;
+            width: 100px;
+            text-align: center;
+            margin: 10px;
         }
     </style>
     
-    <!-- MSAL.js library -->
-    <script src="https://alcdn.msauth.net/browser/2.32.1/js/msal-browser.min.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
-        <div class="otis-logo">OTIS</div>
-        <div class="welcome">Welcome to OTIS</div>
+        <div class="otis">OTIS</div>
+        <h2>Welcome to OTIS</h2>
         
         <div id="loginSection">
-            <button onclick="loginWithMicrosoft()">Accedi con account aziendale</button>
-            <p style="color: #666; font-size: 14px; margin-top: 20px;">
-                Utilizza il tuo account @ceampartners.com
-            </p>
+            <button onclick="loginWithMicrosoft()">
+                Accedi con account aziendale
+            </button>
+            <p style="color: #666;">@ceampartners.com</p>
         </div>
         
         <div id="userSection" style="display: none;">
-            <div class="user-card" id="userCard">
+            <div class="user-card">
                 <h3>✅ Accesso effettuato</h3>
-                <div class="user-info">
-                    <strong>Nome:</strong> <span id="userName"></span>
+                <p><strong>Nome:</strong> <span id="userName"></span></p>
+                <p><strong>Email:</strong> <span id="userEmail"></span></p>
+                
+                <!-- PIN 4 cifre (solo primo accesso) -->
+                <div id="pinSection">
+                    <p><strong>Inserisci PIN 4 cifre:</strong></p>
+                    <input type="password" id="pin" maxlength="4" pattern="\d{4}">
+                    <button onclick="salvaPin()" style="background-color: #28a745;">
+                        Conferma PIN
+                    </button>
                 </div>
-                <div class="user-info">
-                    <strong>Email:</strong> <span id="userEmail"></span>
-                </div>
-                <div class="user-info">
-                    <strong>Ruolo:</strong> Tecnico Felsinea
-                </div>
-                <button class="logout-btn" onclick="logout()">Esci</button>
+                
+                <button onclick="logout()" style="background-color: #dc3545;">
+                    Esci
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-    // Configurazione MSAL
-    const msalConfig = {
-        auth: {
-            clientId: "1fec8e78-bce4-4aaf-ab1b-5451cc387264", // Client ID di test
-            authority: "https://login.microsoftonline.com/ceampartners.com", // Il tuo tenant
-            redirectUri: window.location.origin, // Importante: solo l'origine
-            postLogoutRedirectUri: window.location.origin
-        },
-        cache: {
-            cacheLocation: "sessionStorage",
-            storeAuthStateInCookie: false
-        }
-    };
+    // CONFIGURAZIONE SUPABASE (usa le tue credenziali)
+    const SUPABASE_URL = 'https://tuo-progetto.supabase.co';
+    const SUPABASE_ANON_KEY = 'la-tua-anon-key';
+    
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-    // Verifica se c'è già un utente loggato all'avvio
-    window.addEventListener('load', function() {
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-            showUserInfo(accounts[0]);
+    // LOGIN CON MICROSOFT
+    async function loginWithMicrosoft() {
+        try {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'azure',
+                options: {
+                    redirectTo: window.location.href, // Torna a questa stessa pagina
+                    scopes: 'email profile'
+                }
+            });
+            
+            if (error) throw error;
+            
+        } catch (error) {
+            console.error('Errore:', error);
+            alert('Errore durante il login: ' + error.message);
         }
+    }
+
+    // GESTIONE RITORNO DA MICROSOFT
+    window.addEventListener('load', async function() {
+        // Verifica se c'è una sessione attiva
+        const { data: { session } } = await supabase.auth.getSession();
         
-        // Controlla anche sessionStorage per dati salvati
-        const savedUser = sessionStorage.getItem('otisUser');
-        if (savedUser) {
-            showUserInfo(JSON.parse(savedUser));
+        if (session) {
+            // Utente loggato con Microsoft
+            const user = session.user;
+            const userEmail = user.email;
+            const userName = user.user_metadata?.name || user.email?.split('@')[0];
+            
+            // Mostra dati utente
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('userSection').style.display = 'block';
+            document.getElementById('userName').textContent = userName;
+            document.getElementById('userEmail').textContent = userEmail;
+            
+            // Verifica se l'utente esiste già nel tuo database
+            const { data: existingUser } = await supabase
+                .from('utenti')
+                .select('*')
+                .eq('email', userEmail)
+                .single();
+            
+            if (!existingUser) {
+                // Primo accesso: mostra campo PIN
+                document.getElementById('pinSection').style.display = 'block';
+            } else {
+                // Utente già registrato: nascondi PIN
+                document.getElementById('pinSection').style.display = 'none';
+                // Qui puoi reindirizzare alla dashboard
+                // window.location.href = '/dashboard.html';
+            }
         }
     });
 
-    // Funzione di login con popup
-    async function loginWithMicrosoft() {
-        try {
-            // Mostra il popup di login
-            const loginResponse = await msalInstance.loginPopup({
-                scopes: ["openid", "profile", "email"],
-                prompt: "select_account"
-            });
-            
-            const account = loginResponse.account;
-            
-            // Salva i dati utente
-            const userData = {
-                name: account.name,
-                email: account.username,
-                id: account.homeAccountId
-            };
-            
-            sessionStorage.setItem('otisUser', JSON.stringify(userData));
-            showUserInfo(userData);
-            
-            console.log('Login riuscito:', userData);
-            
-        } catch (error) {
-            console.error('Errore durante il login:', error);
-            
-            // Gestione errori specifici
-            if (error.message.includes('AADSTS50011')) {
-                alert('Errore di configurazione. Uso metodo alternativo...');
-                fallbackLogin();
-            } else {
-                alert('Errore durante il login: ' + error.message);
-            }
+    // SALVA PIN (primo accesso)
+    async function salvaPin() {
+        const pin = document.getElementById('pin').value;
+        
+        if (!/^\d{4}$/.test(pin)) {
+            alert('Inserisci un PIN di 4 cifre');
+            return;
+        }
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session.user;
+        
+        // Salva in Supabase (tabella utenti)
+        const { error } = await supabase
+            .from('utenti')
+            .insert([
+                {
+                    email: user.email,
+                    nome: user.user_metadata?.name,
+                    pin: pin, // IN PRODUZIONE: fai l'hash del PIN!
+                    microsoft_id: user.id
+                }
+            ]);
+        
+        if (error) {
+            alert('Errore nel salvataggio: ' + error.message);
+        } else {
+            alert('Registrazione completata!');
+            document.getElementById('pinSection').style.display = 'none';
         }
     }
 
-    // Metodo alternativo di fallback
-    function fallbackLogin() {
-        // Usa tenant "common" che è più permissivo
-        const tempConfig = {
-            auth: {
-                clientId: "1fec8e78-bce4-4aaf-ab1b-5451cc387264",
-                authority: "https://login.microsoftonline.com/common",
-                redirectUri: window.location.origin
-            }
-        };
-        
-        const tempInstance = new msal.PublicClientApplication(tempConfig);
-        
-        tempInstance.loginPopup({
-            scopes: ["openid", "profile", "email"]
-        }).then(response => {
-            const account = response.account;
-            sessionStorage.setItem('otisUser', JSON.stringify({
-                name: account.name,
-                email: account.username
-            }));
-            showUserInfo(account);
-        }).catch(error => {
-            alert('Errore anche con metodo alternativo: ' + error.message);
-        });
-    }
-
-    // Mostra le informazioni utente
-    function showUserInfo(user) {
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('userSection').style.display = 'block';
-        
-        if (user.name) {
-            document.getElementById('userName').textContent = user.name;
-        }
-        if (user.email) {
-            document.getElementById('userEmail').textContent = user.email;
-        } else if (user.username) {
-            document.getElementById('userEmail').textContent = user.username;
-        }
-    }
-
-    // Logout
-    function logout() {
-        msalInstance.logoutPopup({
-            postLogoutRedirectUri: window.location.origin,
-            mainWindowRedirectUri: window.location.origin
-        }).then(() => {
-            sessionStorage.removeItem('otisUser');
-            document.getElementById('loginSection').style.display = 'block';
-            document.getElementById('userSection').style.display = 'none';
-        });
-    }
-
-    // Metodo di debug per testare senza Azure (temporaneo)
-    function debugLogin() {
-        // SOLO PER TEST - Rimuovi in produzione!
-        const testUser = {
-            name: "De Salvo Mirko",
-            email: "mirko.desalvo@ceampartners.com"
-        };
-        sessionStorage.setItem('otisUser', JSON.stringify(testUser));
-        showUserInfo(testUser);
+    // LOGOUT
+    async function logout() {
+        await supabase.auth.signOut();
+        window.location.reload();
     }
     </script>
-    
-    <!-- Pulsante di debug (rimuovi in produzione) -->
-    <div style="text-align: center; margin-top: 20px;">
-        <button onclick="debugLogin()" style="background-color: #666; width: auto; padding: 5px 10px; font-size: 12px;">
-            Modalità Test (senza Azure)
-        </button>
-    </div>
 </body>
 </html>
