@@ -1,26 +1,146 @@
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
-    <title>Login Microsoft</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login OTIS Portal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+        }
+        .otis-logo {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #0033a0;
+            margin-bottom: 1rem;
+        }
+        .welcome {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 2rem;
+        }
+        button {
+            background-color: #0033a0;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #002070;
+        }
+        .user-card {
+            background-color: #e8f0fe;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: left;
+            display: none;
+        }
+        .user-card h3 {
+            margin-top: 0;
+            color: #0033a0;
+        }
+        .user-info {
+            margin: 10px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+            margin-top: 10px;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+    
+    <!-- MSAL.js library -->
     <script src="https://alcdn.msauth.net/browser/2.32.1/js/msal-browser.min.js"></script>
 </head>
 <body>
-    <button onclick="loginWithPopup()">Accedi con account aziendale</button>
-    <div id="userInfo"></div>
+    <div class="container">
+        <div class="otis-logo">OTIS</div>
+        <div class="welcome">Welcome to OTIS</div>
+        
+        <div id="loginSection">
+            <button onclick="loginWithMicrosoft()">Accedi con account aziendale</button>
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                Utilizza il tuo account @ceampartners.com
+            </p>
+        </div>
+        
+        <div id="userSection" style="display: none;">
+            <div class="user-card" id="userCard">
+                <h3>✅ Accesso effettuato</h3>
+                <div class="user-info">
+                    <strong>Nome:</strong> <span id="userName"></span>
+                </div>
+                <div class="user-info">
+                    <strong>Email:</strong> <span id="userEmail"></span>
+                </div>
+                <div class="user-info">
+                    <strong>Ruolo:</strong> Tecnico Felsinea
+                </div>
+                <button class="logout-btn" onclick="logout()">Esci</button>
+            </div>
+        </div>
+    </div>
 
     <script>
+    // Configurazione MSAL
     const msalConfig = {
         auth: {
-            clientId: "1fec8e78-bce4-4aaf-ab1b-5451cc387264",
-            authority: "https://login.microsoftonline.com/ceampartners.com",
-            redirectUri: window.location.origin // Importante: solo origine, senza percorso
+            clientId: "1fec8e78-bce4-4aaf-ab1b-5451cc387264", // Client ID di test
+            authority: "https://login.microsoftonline.com/ceampartners.com", // Il tuo tenant
+            redirectUri: window.location.origin, // Importante: solo l'origine
+            postLogoutRedirectUri: window.location.origin
+        },
+        cache: {
+            cacheLocation: "sessionStorage",
+            storeAuthStateInCookie: false
         }
     };
 
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    async function loginWithPopup() {
+    // Verifica se c'è già un utente loggato all'avvio
+    window.addEventListener('load', function() {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+            showUserInfo(accounts[0]);
+        }
+        
+        // Controlla anche sessionStorage per dati salvati
+        const savedUser = sessionStorage.getItem('otisUser');
+        if (savedUser) {
+            showUserInfo(JSON.parse(savedUser));
+        }
+    });
+
+    // Funzione di login con popup
+    async function loginWithMicrosoft() {
         try {
+            // Mostra il popup di login
             const loginResponse = await msalInstance.loginPopup({
                 scopes: ["openid", "profile", "email"],
                 prompt: "select_account"
@@ -28,26 +148,102 @@
             
             const account = loginResponse.account;
             
-            document.getElementById('userInfo').innerHTML = `
-                <h3>✅ Login effettuato!</h3>
-                <p>Nome: ${account.name}</p>
-                <p>Email: ${account.username}</p>
-            `;
+            // Salva i dati utente
+            const userData = {
+                name: account.name,
+                email: account.username,
+                id: account.homeAccountId
+            };
             
-            sessionStorage.setItem('userName', account.name);
-            sessionStorage.setItem('userEmail', account.username);
+            sessionStorage.setItem('otisUser', JSON.stringify(userData));
+            showUserInfo(userData);
+            
+            console.log('Login riuscito:', userData);
             
         } catch (error) {
-            console.error('Errore:', error);
-            alert('Errore: ' + error.message);
+            console.error('Errore durante il login:', error);
+            
+            // Gestione errori specifici
+            if (error.message.includes('AADSTS50011')) {
+                alert('Errore di configurazione. Uso metodo alternativo...');
+                fallbackLogin();
+            } else {
+                alert('Errore durante il login: ' + error.message);
+            }
         }
     }
 
-    // Verifica se c'è già un utente loggato
-    const accounts = msalInstance.getAllAccounts();
-    if (accounts.length > 0) {
-        console.log('Utente già loggato:', accounts[0]);
+    // Metodo alternativo di fallback
+    function fallbackLogin() {
+        // Usa tenant "common" che è più permissivo
+        const tempConfig = {
+            auth: {
+                clientId: "1fec8e78-bce4-4aaf-ab1b-5451cc387264",
+                authority: "https://login.microsoftonline.com/common",
+                redirectUri: window.location.origin
+            }
+        };
+        
+        const tempInstance = new msal.PublicClientApplication(tempConfig);
+        
+        tempInstance.loginPopup({
+            scopes: ["openid", "profile", "email"]
+        }).then(response => {
+            const account = response.account;
+            sessionStorage.setItem('otisUser', JSON.stringify({
+                name: account.name,
+                email: account.username
+            }));
+            showUserInfo(account);
+        }).catch(error => {
+            alert('Errore anche con metodo alternativo: ' + error.message);
+        });
+    }
+
+    // Mostra le informazioni utente
+    function showUserInfo(user) {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('userSection').style.display = 'block';
+        
+        if (user.name) {
+            document.getElementById('userName').textContent = user.name;
+        }
+        if (user.email) {
+            document.getElementById('userEmail').textContent = user.email;
+        } else if (user.username) {
+            document.getElementById('userEmail').textContent = user.username;
+        }
+    }
+
+    // Logout
+    function logout() {
+        msalInstance.logoutPopup({
+            postLogoutRedirectUri: window.location.origin,
+            mainWindowRedirectUri: window.location.origin
+        }).then(() => {
+            sessionStorage.removeItem('otisUser');
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('userSection').style.display = 'none';
+        });
+    }
+
+    // Metodo di debug per testare senza Azure (temporaneo)
+    function debugLogin() {
+        // SOLO PER TEST - Rimuovi in produzione!
+        const testUser = {
+            name: "De Salvo Mirko",
+            email: "mirko.desalvo@ceampartners.com"
+        };
+        sessionStorage.setItem('otisUser', JSON.stringify(testUser));
+        showUserInfo(testUser);
     }
     </script>
+    
+    <!-- Pulsante di debug (rimuovi in produzione) -->
+    <div style="text-align: center; margin-top: 20px;">
+        <button onclick="debugLogin()" style="background-color: #666; width: auto; padding: 5px 10px; font-size: 12px;">
+            Modalità Test (senza Azure)
+        </button>
+    </div>
 </body>
 </html>
