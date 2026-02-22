@@ -11,6 +11,7 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            margin: 0;
             background-color: #f0f0f0;
         }
         .container {
@@ -20,8 +21,19 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             text-align: center;
             max-width: 400px;
+            width: 100%;
         }
-        .otis { color: #0033a0; font-size: 2rem; font-weight: bold; }
+        .otis {
+            color: #0033a0;
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .welcome {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 2rem;
+        }
         button {
             background-color: #0033a0;
             color: white;
@@ -32,55 +44,111 @@
             cursor: pointer;
             width: 100%;
             margin: 10px 0;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #002070;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
         }
         .user-card {
             background-color: #e8f0fe;
             border-radius: 8px;
             padding: 20px;
             margin-top: 20px;
-            display: none;
             text-align: left;
         }
-        input {
+        .user-info {
+            margin: 10px 0;
             padding: 8px;
-            font-size: 16px;
+            background: white;
+            border-radius: 4px;
+        }
+        .pin-input {
+            margin: 15px 0;
+        }
+        .pin-input input {
+            padding: 8px;
+            font-size: 18px;
             width: 100px;
             text-align: center;
-            margin: 10px;
+            border: 2px solid #0033a0;
+            border-radius: 4px;
+            letter-spacing: 4px;
+        }
+        .error-message {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        .success-message {
+            color: #28a745;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+            margin-top: 15px;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
         }
     </style>
     
-    <!-- Supabase JS -->
+    <!-- Supabase JS - DEVE ESSERE PRIMA DEL NOSTRO SCRIPT -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
         <div class="otis">OTIS</div>
-        <h2>Welcome to OTIS</h2>
+        <div class="welcome">Welcome to OTIS</div>
         
+        <!-- Sezione Login -->
         <div id="loginSection">
-            <button onclick="loginWithMicrosoft()">
+            <button onclick="loginWithMicrosoft()" id="loginBtn">
                 Accedi con account aziendale
             </button>
-            <p style="color: #666;">@ceampartners.com</p>
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                Utilizza il tuo account @ceampartners.com
+            </p>
         </div>
         
+        <!-- Sezione Utente (dopo login) -->
         <div id="userSection" style="display: none;">
             <div class="user-card">
-                <h3>✅ Accesso effettuato</h3>
-                <p><strong>Nome:</strong> <span id="userName"></span></p>
-                <p><strong>Email:</strong> <span id="userEmail"></span></p>
+                <h3 style="color: #0033a0; margin-top: 0;">✅ Accesso effettuato</h3>
                 
-                <!-- PIN 4 cifre (solo primo accesso) -->
-                <div id="pinSection">
-                    <p><strong>Inserisci PIN 4 cifre:</strong></p>
-                    <input type="password" id="pin" maxlength="4" pattern="\d{4}">
-                    <button onclick="salvaPin()" style="background-color: #28a745;">
+                <div class="user-info">
+                    <strong>Nome:</strong> <span id="userName"></span>
+                </div>
+                <div class="user-info">
+                    <strong>Email:</strong> <span id="userEmail"></span>
+                </div>
+                
+                <!-- Sezione PIN (solo primo accesso) -->
+                <div id="pinSection" class="pin-input">
+                    <p><strong>Primo accesso - Imposta il tuo PIN:</strong></p>
+                    <input type="password" id="pin" maxlength="4" pattern="\d{4}" placeholder="****">
+                    <button onclick="salvaPin()" style="background-color: #28a745; margin-top: 10px;">
                         Conferma PIN
                     </button>
                 </div>
                 
-                <button onclick="logout()" style="background-color: #dc3545;">
+                <!-- Messaggi di feedback -->
+                <div id="errorMessage" class="error-message"></div>
+                <div id="successMessage" class="success-message"></div>
+                
+                <button onclick="logout()" class="logout-btn">
                     Esci
                 </button>
             </div>
@@ -88,104 +156,263 @@
     </div>
 
     <script>
-    // CONFIGURAZIONE SUPABASE (usa le tue credenziali)
-    const SUPABASE_URL = 'https://tuo-progetto.supabase.co';
-    const SUPABASE_ANON_KEY = 'la-tua-anon-key';
+    // ===========================================
+    // CONFIGURAZIONE - INSERISCI I TUOI DATI QUI
+    // ===========================================
+    const SUPABASE_URL = 'https://berlfufnmolyrmxeyqfd.supabase.co';  // Il tuo URL Supabase
+    const SUPABASE_ANON_KEY = 'sb_publishable_a3USDfV7gbuauU2Kd6DuQQ_8PFVElpy';              // La tua chiave anonima
     
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // LOGIN CON MICROSOFT
-    async function loginWithMicrosoft() {
+    // Inizializza Supabase
+    const supabase = supabaseCreateClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // ===========================================
+    // FUNZIONI DI AUTENTICAZIONE
+    // ===========================================
+    
+    /**
+     * Funzione di login con Microsoft
+     * Questa funzione viene chiamata quando si clicca il pulsante
+     */
+    window.loginWithMicrosoft = async function() {
         try {
+            // Disabilita il pulsante durante il login
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Reindirizzamento in corso...';
+            }
+            
+            console.log('Avvio login con Microsoft...');
+            
+            // Usa Supabase per il login OAuth con Microsoft
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'azure',
                 options: {
-                    redirectTo: window.location.href, // Torna a questa stessa pagina
-                    scopes: 'email profile'
+                    redirectTo: window.location.href,  // Torna a questa pagina
+                    scopes: 'email profile',
+                    queryParams: {
+                        prompt: 'select_account'  // Forza la selezione dell'account
+                    }
                 }
             });
             
-            if (error) throw error;
+            if (error) {
+                throw error;
+            }
+            
+            // Nota: la redirect avviene automaticamente
             
         } catch (error) {
-            console.error('Errore:', error);
-            alert('Errore durante il login: ' + error.message);
-        }
-    }
-
-    // GESTIONE RITORNO DA MICROSOFT
-    window.addEventListener('load', async function() {
-        // Verifica se c'è una sessione attiva
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-            // Utente loggato con Microsoft
-            const user = session.user;
-            const userEmail = user.email;
-            const userName = user.user_metadata?.name || user.email?.split('@')[0];
+            console.error('Errore durante il login:', error);
+            mostraErrore('Errore durante il login: ' + error.message);
             
-            // Mostra dati utente
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('userSection').style.display = 'block';
-            document.getElementById('userName').textContent = userName;
-            document.getElementById('userEmail').textContent = userEmail;
-            
-            // Verifica se l'utente esiste già nel tuo database
-            const { data: existingUser } = await supabase
-                .from('utenti')
-                .select('*')
-                .eq('email', userEmail)
-                .single();
-            
-            if (!existingUser) {
-                // Primo accesso: mostra campo PIN
-                document.getElementById('pinSection').style.display = 'block';
-            } else {
-                // Utente già registrato: nascondi PIN
-                document.getElementById('pinSection').style.display = 'none';
-                // Qui puoi reindirizzare alla dashboard
-                // window.location.href = '/dashboard.html';
+            // Riabilita il pulsante
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Accedi con account aziendale';
             }
         }
-    });
-
-    // SALVA PIN (primo accesso)
-    async function salvaPin() {
+    };
+    
+    /**
+     * Funzione di logout
+     */
+    window.logout = async function() {
+        try {
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
+            
+            // Ricarica la pagina per tornare allo stato iniziale
+            window.location.reload();
+            
+        } catch (error) {
+            console.error('Errore durante il logout:', error);
+            mostraErrore('Errore durante il logout: ' + error.message);
+        }
+    };
+    
+    /**
+     * Salva il PIN per i nuovi utenti
+     */
+    window.salvaPin = async function() {
         const pin = document.getElementById('pin').value;
         
-        if (!/^\d{4}$/.test(pin)) {
-            alert('Inserisci un PIN di 4 cifre');
+        // Validazione PIN
+        if (!pin || !/^\d{4}$/.test(pin)) {
+            mostraErrore('Inserisci un PIN valido di 4 cifre');
             return;
         }
         
-        const { data: { session } } = await supabase.auth.getSession();
-        const user = session.user;
-        
-        // Salva in Supabase (tabella utenti)
-        const { error } = await supabase
-            .from('utenti')
-            .insert([
-                {
-                    email: user.email,
-                    nome: user.user_metadata?.name,
-                    pin: pin, // IN PRODUZIONE: fai l'hash del PIN!
-                    microsoft_id: user.id
+        try {
+            // Prendi la sessione corrente
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            
+            if (sessionError) throw sessionError;
+            if (!session) throw new Error('Nessuna sessione attiva');
+            
+            const user = session.user;
+            
+            // Salva nella tabella utenti
+            const { error: insertError } = await supabase
+                .from('utenti')
+                .insert([
+                    {
+                        email: user.email,
+                        nome: user.user_metadata?.name || user.email?.split('@')[0],
+                        pin: pin,  // IN PRODUZIONE: fai l'hash del PIN!
+                        microsoft_id: user.id,
+                        created_at: new Date()
+                    }
+                ]);
+            
+            if (insertError) {
+                // Se l'errore è "duplicate key", l'utente esiste già
+                if (insertError.code === '23505') {
+                    mostraSuccesso('Utente già registrato!');
+                    document.getElementById('pinSection').style.display = 'none';
+                } else {
+                    throw insertError;
                 }
-            ]);
-        
-        if (error) {
-            alert('Errore nel salvataggio: ' + error.message);
-        } else {
-            alert('Registrazione completata!');
-            document.getElementById('pinSection').style.display = 'none';
+            } else {
+                mostraSuccesso('Registrazione completata con successo!');
+                document.getElementById('pinSection').style.display = 'none';
+            }
+            
+        } catch (error) {
+            console.error('Errore nel salvataggio PIN:', error);
+            mostraErrore('Errore nel salvataggio: ' + error.message);
+        }
+    };
+    
+    // ===========================================
+    // FUNZIONI DI UTILITÀ
+    // ===========================================
+    
+    /**
+     * Mostra un messaggio di errore
+     */
+    function mostraErrore(messaggio) {
+        const errorDiv = document.getElementById('errorMessage');
+        if (errorDiv) {
+            errorDiv.textContent = messaggio;
+            errorDiv.style.display = 'block';
+            
+            // Nascondi dopo 5 secondi
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
         }
     }
-
-    // LOGOUT
-    async function logout() {
-        await supabase.auth.signOut();
-        window.location.reload();
+    
+    /**
+     * Mostra un messaggio di successo
+     */
+    function mostraSuccesso(messaggio) {
+        const successDiv = document.getElementById('successMessage');
+        if (successDiv) {
+            successDiv.textContent = messaggio;
+            successDiv.style.display = 'block';
+            
+            // Nascondi dopo 5 secondi
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 5000);
+        }
     }
+    
+    /**
+     * Aggiorna l'interfaccia in base allo stato di login
+     */
+    async function aggiornaInterfaccia() {
+        try {
+            // Prendi la sessione corrente
+            const { data: { session }, error } = await supabase.auth.getSession();
+            
+            if (error) throw error;
+            
+            if (session) {
+                // Utente loggato
+                const user = session.user;
+                const userEmail = user.email;
+                const userName = user.user_metadata?.name || userEmail?.split('@')[0] || 'Utente';
+                
+                // Aggiorna UI
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('userSection').style.display = 'block';
+                document.getElementById('userName').textContent = userName;
+                document.getElementById('userEmail').textContent = userEmail;
+                
+                // Verifica se l'utente esiste già nella tabella
+                const { data: existingUser, error: queryError } = await supabase
+                    .from('utenti')
+                    .select('*')
+                    .eq('email', userEmail)
+                    .maybeSingle();
+                
+                if (queryError) throw queryError;
+                
+                // Mostra o nascondi la sezione PIN
+                if (existingUser) {
+                    document.getElementById('pinSection').style.display = 'none';
+                } else {
+                    document.getElementById('pinSection').style.display = 'block';
+                }
+                
+                console.log('Utente loggato:', userEmail);
+                
+            } else {
+                // Nessun utente loggato
+                document.getElementById('loginSection').style.display = 'block';
+                document.getElementById('userSection').style.display = 'none';
+                
+                console.log('Nessun utente loggato');
+            }
+            
+        } catch (error) {
+            console.error('Errore nel controllo sessione:', error);
+        }
+    }
+    
+    // ===========================================
+    // INIZIALIZZAZIONE
+    // ===========================================
+    
+    // Esegui quando la pagina è caricata
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Pagina caricata, controllo sessione...');
+        
+        // Controlla se c'è un hash nell'URL (callback da OAuth)
+        if (window.location.hash) {
+            console.log('Hash rilevato, elaborazione callback...');
+        }
+        
+        // Aggiorna l'interfaccia in base allo stato di login
+        aggiornaInterfaccia();
+        
+        // Ascolta i cambiamenti di autenticazione
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log('Evento auth:', event);
+            aggiornaInterfaccia();
+        });
+    });
+    
+    // Per debug: rendi disponibile supabase nella console
+    window.debug = {
+        supabase: supabase,
+        getSession: async () => {
+            const { data } = await supabase.auth.getSession();
+            console.log('Sessione corrente:', data);
+        }
+    };
+    
     </script>
+    
+    <!-- Pulsante di debug (rimuovi in produzione) -->
+    <div style="text-align: center; margin-top: 20px;">
+        <button onclick="debug.getSession()" style="background-color: #666; width: auto; padding: 5px 10px; font-size: 12px;">
+            Debug: Mostra sessione
+        </button>
+    </div>
 </body>
 </html>
