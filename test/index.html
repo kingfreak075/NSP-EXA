@@ -1,1 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Microsoft</title>
+    <script src="https://alcdn.msauth.net/browser/2.32.1/js/msal-browser.min.js"></script>
+</head>
+<body>
+    <button onclick="loginWithPopup()">Accedi con account aziendale</button>
+    <div id="userInfo"></div>
 
+    <script>
+    const msalConfig = {
+        auth: {
+            clientId: "1fec8e78-bce4-4aaf-ab1b-5451cc387264",
+            authority: "https://login.microsoftonline.com/ceampartners.com",
+            redirectUri: window.location.origin // Importante: solo origine, senza percorso
+        }
+    };
+
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    async function loginWithPopup() {
+        try {
+            const loginResponse = await msalInstance.loginPopup({
+                scopes: ["openid", "profile", "email"],
+                prompt: "select_account"
+            });
+            
+            const account = loginResponse.account;
+            
+            document.getElementById('userInfo').innerHTML = `
+                <h3>✅ Login effettuato!</h3>
+                <p>Nome: ${account.name}</p>
+                <p>Email: ${account.username}</p>
+            `;
+            
+            sessionStorage.setItem('userName', account.name);
+            sessionStorage.setItem('userEmail', account.username);
+            
+        } catch (error) {
+            console.error('Errore:', error);
+            alert('Errore: ' + error.message);
+        }
+    }
+
+    // Verifica se c'è già un utente loggato
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+        console.log('Utente già loggato:', accounts[0]);
+    }
+    </script>
+</body>
+</html>
